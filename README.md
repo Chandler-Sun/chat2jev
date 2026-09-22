@@ -6,6 +6,12 @@ Convert OpenAI-compatible Chat Completions requests into TypeSafe System One (Je
 
 Chat2Jev is an independent, experimental workbench for local use or deployment in a trusted network. It is not an official OpenAI or TypeSafe product. The interface is currently primarily in Chinese.
 
+## Interface preview
+
+![Chat2Jev workbench showing the original Chat request, State, Questions, and a side-by-side comparison of Chat output and Jev judgments](docs/images/chat2jev-preview.png)
+
+The workbench brings the original request, editable State and Questions, and Chat / Jev results into one view. This example shows candidate intent classification, including Jev choice probabilities and scores.
+
 ## Features
 
 - **Convert and compare**: Paste JSON, a message array, plain text, or a supported cURL request. Convert it into State / Questions, then compare Chat and Jev results and response times.
@@ -47,7 +53,8 @@ The app currently has no built-in authentication, permission isolation, or rate 
 | `npm run typecheck` | Check TypeScript types |
 | `npm test` | Run local unit tests without model calls |
 | `npm run build` | Create a Next.js production build |
-| `npm start -- --hostname 127.0.0.1` | Serve the production build |
+| `npm run build:worker` | Create the Cloudflare Worker bundle (OpenNext) |
+| `npm start -- --hostname 127.0.0.1` | Serve the Next.js production build |
 | `npm run preview` | Build and preview the Cloudflare Worker |
 | `npm run deploy` | Build and deploy to the current Cloudflare account |
 
@@ -87,6 +94,8 @@ npm run preview
 # After checking the target account and configuring access controls:
 npm run deploy
 ```
+
+Cloudflare Workers Builds should use `npm run build:worker` (or `npx opennextjs-cloudflare build`) as the build command. `npm run build` is the Next.js compile that OpenNext and CI call. Do not start Wrangler during that compile — it hangs static generation on the build image.
 
 You can change the Worker name in `wrangler.jsonc`. `.dev.vars` is for local configuration; do not commit real credentials.
 

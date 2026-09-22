@@ -8,6 +8,12 @@
 
 这是一个独立的实验项目，并非 OpenAI 或 TypeSafe 官方产品。适合本地使用或部署在受信任的网络内。
 
+## 界面预览
+
+![Chat2Jev 工作台：原始 Chat 请求、State、Questions，以及 Chat 输出与 Jev 判断结果的并排对比](docs/images/chat2jev-preview.png)
+
+在同一工作台中查看原始请求、编辑 State 和 Questions，并对比 Chat 与 Jev 的结果。图中以候选人求职意向判断为例，展示 Jev 的选项概率与评分。
+
 ## 能做什么
 
 - **转换与对比**：粘贴 JSON、消息数组、文本或受支持的 cURL 请求，转换为 State / Questions，对比 Chat 和 Jev 的结果与耗时。
@@ -49,7 +55,8 @@ npm run dev -- --hostname 127.0.0.1
 | `npm run typecheck` | TypeScript 类型检查 |
 | `npm test` | 运行本地单元测试，不调用模型 |
 | `npm run build` | Next.js 生产构建 |
-| `npm start -- --hostname 127.0.0.1` | 运行生产构建 |
+| `npm run build:worker` | 用 OpenNext 打出 Cloudflare Worker 包 |
+| `npm start -- --hostname 127.0.0.1` | 运行 Next.js 生产构建 |
 | `npm run preview` | 构建并预览 Cloudflare Worker |
 | `npm run deploy` | 构建并部署到当前 Cloudflare 账号 |
 
@@ -87,6 +94,8 @@ npm run preview
 # 确认目标账号与访问控制后执行：
 npm run deploy
 ```
+
+Cloudflare Workers Builds 的构建命令应设为 `npm run build:worker`（或 `npx opennextjs-cloudflare build`）。`npm run build` 是 OpenNext 和 CI 会调用的 Next.js 编译。不要在这次编译里启动 Wrangler，否则构建镜像上的静态生成会卡住。
 
 `wrangler.jsonc` 中的 Worker 名称可以修改。`.dev.vars` 只用于本地配置，不应提交真实凭据。
 
