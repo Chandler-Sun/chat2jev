@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BracesIcon, ListIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { JudgmentList, JudgmentRow } from "@/components/judgment-row";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { pretty } from "@/lib/conversion";
 import { questionsSchema, type Answer, type Question, type QuestionNote, type Questions } from "@/lib/types";
 
@@ -33,66 +40,70 @@ export function QuestionEditor({
   }, [text]);
 
   const update = (next: Questions) => onTextChange(pretty(next));
+  const showJson = mode === "json" || !parsed.ok;
 
   return (
-    <div>
-      <div className="tab-row" role="tablist">
-        <button type="button" className="tab" data-active={mode === "cards"} onClick={() => setMode("cards")}>
+    <Tabs value={showJson ? "json" : mode} onValueChange={(value) => setMode(value as "cards" | "json")}>
+      <TabsList variant="line">
+        <TabsTrigger value="cards">
+          <ListIcon data-icon="inline-start" />
           列表
-        </button>
-        <button type="button" className="tab" data-active={mode === "json"} onClick={() => setMode("json")}>
+        </TabsTrigger>
+        <TabsTrigger value="json">
+          <BracesIcon data-icon="inline-start" />
           JSON
-        </button>
-      </div>
-      {mode === "json" || !parsed.ok ? (
-        <>
-          {!parsed.ok ? <p className="error-text">{parsed.error}</p> : null}
-          <textarea
-            className="editor"
-            value={text}
-            spellCheck={false}
-            aria-label="Questions JSON"
-            onChange={(event) => onTextChange(event.target.value)}
-          />
-        </>
-      ) : (
-        <>
-          <JudgmentList>
-            {Object.entries(parsed.value).map(([id, question]) => (
-              <QuestionCard
-                key={id}
-                id={id}
-                question={question}
-                purpose={notes.find((note) => note.id === id)?.purpose}
-                answer={answers?.[id]}
-                stale={stale}
-                open={openId === id}
-                editing={editingId === id}
-                onToggle={() => {
-                  setOpenId((current) => (current === id ? null : id));
-                  if (openId === id) setEditingId(null);
-                }}
-                onEdit={() => setEditingId((current) => (current === id ? null : id))}
-                onChange={(next) => update({ ...parsed.value, [id]: next })}
-                onDelete={() => {
-                  const next = { ...parsed.value };
-                  delete next[id];
-                  update(next);
-                }}
-              />
-            ))}
-          </JudgmentList>
-          <AddQuestion
-            onAdd={(question) => {
-              const id = nextId(parsed.value);
-              update({ ...parsed.value, [id]: question });
-              setOpenId(id);
-              setEditingId(id);
-            }}
-          />
-        </>
-      )}
-    </div>
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="json" className="flex flex-col gap-2">
+        {!parsed.ok ? <p className="text-sm text-destructive">{parsed.error}</p> : null}
+        <Textarea
+          className="editor"
+          value={text}
+          spellCheck={false}
+          aria-label="Questions JSON"
+          onChange={(event) => onTextChange(event.target.value)}
+        />
+      </TabsContent>
+      <TabsContent value="cards" className="flex flex-col gap-3">
+        {parsed.ok ? (
+          <>
+            <JudgmentList>
+              {Object.entries(parsed.value).map(([id, question]) => (
+                <QuestionCard
+                  key={id}
+                  id={id}
+                  question={question}
+                  purpose={notes.find((note) => note.id === id)?.purpose}
+                  answer={answers?.[id]}
+                  stale={stale}
+                  open={openId === id}
+                  editing={editingId === id}
+                  onToggle={() => {
+                    setOpenId((current) => (current === id ? null : id));
+                    if (openId === id) setEditingId(null);
+                  }}
+                  onEdit={() => setEditingId((current) => (current === id ? null : id))}
+                  onChange={(next) => update({ ...parsed.value, [id]: next })}
+                  onDelete={() => {
+                    const next = { ...parsed.value };
+                    delete next[id];
+                    update(next);
+                  }}
+                />
+              ))}
+            </JudgmentList>
+            <AddQuestion
+              onAdd={(question) => {
+                const id = nextId(parsed.value);
+                update({ ...parsed.value, [id]: question });
+                setOpenId(id);
+                setEditingId(id);
+              }}
+            />
+          </>
+        ) : null}
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -125,29 +136,35 @@ function QuestionCard({
 
   return (
     <JudgmentRow id={id} question={question} answer={answer} stale={stale} open={open} onToggle={onToggle}>
-      {purpose ? <p className="j-purpose">{purpose}</p> : null}
+      {purpose ? (
+        <p className="j-purpose">
+          <Badge variant="secondary">业务目的</Badge>
+          {purpose}
+        </p>
+      ) : null}
       {editing ? (
-        <div className="q-edit">
+        <div className="mt-2.5 flex flex-col gap-3 border-t pt-2.5">
           {instruction === null ? null : (
-            <label className="field">
-              <span>判断</span>
-              <textarea
+            <Field>
+              <FieldLabel>判断指令（Instructions，可用 `字段名` 引用 State）</FieldLabel>
+              <Textarea
                 className="editor short"
                 value={instruction}
                 onChange={(event) => onChange({ ...question, instructions: event.target.value })}
               />
-            </label>
+            </Field>
           )}
           <CriteriaEditor question={question} onChange={onChange} />
         </div>
       ) : null}
       <div className="j-actions">
-        <button type="button" className="btn btn-ghost" onClick={onEdit}>
-          {editing ? "收起编辑" : "编辑"}
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={onDelete}>
-          删除
-        </button>
+        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+          {editing ? "收起编辑" : "调整指令与选项"}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
+          <Trash2Icon data-icon="inline-start" />
+          删除维度
+        </Button>
       </div>
     </JudgmentRow>
   );
@@ -163,39 +180,38 @@ function CriteriaEditor({
   if (question.type === "choice") {
     const entries = Object.entries(question.criteria);
     if (entries.some(([, value]) => typeof value !== "string" && value !== null)) {
-      return <p className="quiet">选项说明是结构化的，请在 JSON 里改。</p>;
+      return <p className="text-sm text-muted-foreground">选项说明是结构化的，请在 JSON 里改。</p>;
     }
     return (
-      <div>
+      <div className="flex flex-col gap-2">
         {entries.map(([key, value], index) => (
-          <div className="option-row" key={index}>
-            <input
-              className="plain-input"
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[140px_1fr_auto]" key={index}>
+            <Input
               value={key}
               aria-label={`${key} 的选项 id`}
               onChange={(event) => onChange({ ...question, criteria: renameKey(question.criteria, key, event.target.value) })}
             />
-            <input
-              className="plain-input"
+            <Input
               value={typeof value === "string" ? value : ""}
               aria-label={`${key} 的说明`}
               onChange={(event) =>
                 onChange({ ...question, criteria: { ...question.criteria, [key]: event.target.value } })
               }
             />
-            <button
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
               disabled={entries.length <= 1}
               onClick={() => onChange({ ...question, criteria: omitKey(question.criteria, key) })}
             >
               去掉
-            </button>
+            </Button>
           </div>
         ))}
-        <button
+        <Button
           type="button"
-          className="btn"
+          variant="outline"
+          size="sm"
           onClick={() =>
             onChange({
               ...question,
@@ -203,24 +219,24 @@ function CriteriaEditor({
             })
           }
         >
+          <PlusIcon data-icon="inline-start" />
           添加选项
-        </button>
+        </Button>
       </div>
     );
   }
 
   if (question.type === "score") {
     if (question.criteria.some((level) => typeof level !== "string")) {
-      return <p className="quiet">等级说明是结构化的，请在 JSON 里改。</p>;
+      return <p className="text-sm text-muted-foreground">等级说明是结构化的，请在 JSON 里改。</p>;
     }
     const levels = question.criteria as string[];
     return (
-      <div className="field-stack">
+      <div className="flex flex-col gap-2">
         {levels.map((level, index) => (
-          <div className="option-row" key={index}>
-            <input className="plain-input" value={String(index)} readOnly aria-label={`等级 ${index}`} />
-            <input
-              className="plain-input"
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[140px_1fr_auto]" key={index}>
+            <Input value={String(index)} readOnly aria-label={`等级 ${index}`} />
+            <Input
               value={level}
               aria-label={`等级 ${index} 的说明`}
               onChange={(event) => {
@@ -229,24 +245,26 @@ function CriteriaEditor({
                 onChange({ ...question, criteria: next });
               }}
             />
-            <button
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
               disabled={levels.length <= 2}
               onClick={() => onChange({ ...question, criteria: levels.filter((_, item) => item !== index) })}
             >
               去掉
-            </button>
+            </Button>
           </div>
         ))}
-        <button
+        <Button
           type="button"
-          className="btn"
+          variant="outline"
+          size="sm"
           disabled={levels.length >= 10}
           onClick={() => onChange({ ...question, criteria: [...levels, ""] })}
         >
+          <PlusIcon data-icon="inline-start" />
           添加等级
-        </button>
+        </Button>
       </div>
     );
   }
@@ -256,47 +274,48 @@ function CriteriaEditor({
   const structured =
     (question.criteria?.true !== undefined && typeof question.criteria.true !== "string") ||
     (question.criteria?.false !== undefined && typeof question.criteria.false !== "string");
-  if (structured) return <p className="quiet">是非边界是结构化的，请在 JSON 里改。</p>;
+  if (structured) return <p className="text-sm text-muted-foreground">是非边界是结构化的，请在 JSON 里改。</p>;
 
   return (
-    <div className="field-stack">
-      <label className="field">
-        <span>接近 1 的含义</span>
-        <input
-          className="plain-input"
+    <FieldGroup>
+      <Field>
+        <FieldLabel>接近 1 的含义</FieldLabel>
+        <Input
           value={yes}
           onChange={(event) =>
             onChange({ ...question, criteria: { ...question.criteria, true: event.target.value } })
           }
         />
-      </label>
-      <label className="field">
-        <span>接近 0 的含义</span>
-        <input
-          className="plain-input"
+      </Field>
+      <Field>
+        <FieldLabel>接近 0 的含义</FieldLabel>
+        <Input
           value={no}
           onChange={(event) =>
             onChange({ ...question, criteria: { ...question.criteria, false: event.target.value } })
           }
         />
-      </label>
-    </div>
+      </Field>
+    </FieldGroup>
   );
 }
 
 function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
   return (
-    <div className="actions">
-      <button
+    <div className="flex flex-wrap gap-2">
+      <Button
         type="button"
-        className="btn"
+        variant="outline"
+        size="sm"
         onClick={() => onAdd({ type: "noul", instructions: "这里写一个是否判断，并用 `字段` 指向 State。" })}
       >
-        加一个 Noul
-      </button>
-      <button
+        <PlusIcon data-icon="inline-start" />
+        是非判断 (Noul)
+      </Button>
+      <Button
         type="button"
-        className="btn"
+        variant="outline"
+        size="sm"
         onClick={() =>
           onAdd({
             type: "choice",
@@ -305,11 +324,13 @@ function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
           })
         }
       >
-        加一个 Choice
-      </button>
-      <button
+        <PlusIcon data-icon="inline-start" />
+        单选分类 (Choice)
+      </Button>
+      <Button
         type="button"
-        className="btn"
+        variant="outline"
+        size="sm"
         onClick={() =>
           onAdd({
             type: "score",
@@ -318,8 +339,9 @@ function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
           })
         }
       >
-        加一个 Score
-      </button>
+        <PlusIcon data-icon="inline-start" />
+        程度打分 (Score)
+      </Button>
     </div>
   );
 }

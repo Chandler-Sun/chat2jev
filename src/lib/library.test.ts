@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { blankReplaceableState, finalizeConversion, parseModelJson } from "./conversion";
 import { chatCompletionsUrl, HttpError } from "./http";
+import { buildChatForwardBody } from "./chat-forward";
 import { extractRequestPayload, normalizeRequest } from "./openai-request";
 import { samples } from "./samples";
 import { conversionSchema } from "./types";
@@ -91,4 +92,19 @@ test("instance text copied into a question is flagged", () => {
 test("fenced model output parses", () => {
   const parsed = parseModelJson("```json\n{\"title\":\"ok\"}\n```");
   assert.deepEqual(parsed, { title: "ok" });
+});
+
+test("chat forward keeps the original model and messages", () => {
+  const body = buildChatForwardBody(samples[0].source, "fallback-model");
+  assert.equal(body.model, "gpt-4.1-mini");
+  assert.equal(body.stream, false);
+  assert.equal(Array.isArray(body.messages), true);
+});
+
+test("chat forward ignores jev slugs and uses the fallback model", () => {
+  const body = buildChatForwardBody(
+    JSON.stringify({ model: "jev:ticket-triage", messages: [{ role: "user", content: "hello" }] }),
+    "gpt-4.1-mini",
+  );
+  assert.equal(body.model, "gpt-4.1-mini");
 });

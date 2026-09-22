@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Newsreader, Source_Sans_3 } from "next/font/google";
+import { Providers } from "@/components/providers";
 import { Shell } from "@/components/shell";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const sans = Source_Sans_3({
@@ -20,15 +22,17 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jev Lab",
-  description: "把 OpenAI 兼容请求拆成 TypeSafe 的 State 与 Questions",
+  title: "Chat2Jev",
+  description: "对照传统 chat completion 与 TypeSafe Jev System One 判断结果",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+    <html lang="zh-CN" suppressHydrationWarning className={cn(sans.variable, serif.variable, mono.variable)}>
       <body>
-        <Shell>{children}</Shell>
+        <Providers>
+          <Shell>{children}</Shell>
+        </Providers>
       </body>
     </html>
   );

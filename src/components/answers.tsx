@@ -1,4 +1,6 @@
 import type { Answer, SystemOneResponse } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const fitLabel = {
   judgment: "可直接判断",
@@ -7,7 +9,7 @@ const fitLabel = {
 } as const;
 
 export function FitBadge({ fit }: { fit: keyof typeof fitLabel }) {
-  return <span className="badge">{fitLabel[fit]}</span>;
+  return <Badge variant="secondary">{fitLabel[fit]}</Badge>;
 }
 
 export function answerVerdict(answer: Answer | undefined): string {
@@ -20,12 +22,12 @@ export function answerVerdict(answer: Answer | undefined): string {
 
 export function AnswerReadout({ answer, stale = false }: { answer: Answer; stale?: boolean }) {
   return (
-    <div className="readout" data-stale={stale}>
-      <div className="readout-head">
-        <strong className="verdict">{answerVerdict(answer)}</strong>
-        {stale ? <span className="stale-tag">上次</span> : null}
+    <div className="mt-2.5" data-stale={stale}>
+      <div className="flex items-baseline gap-2">
+        <strong className="font-heading text-[28px] font-medium tracking-tight">{answerVerdict(answer)}</strong>
+        {stale ? <span className="text-xs text-copper">上次</span> : null}
         {answer.type !== "noul" && typeof answer.confidence === "number" ? (
-          <span className="quiet">confidence {answer.confidence.toFixed(2)}</span>
+          <span className="text-sm text-muted-foreground">confidence {answer.confidence.toFixed(2)}</span>
         ) : null}
       </div>
       <AnswerBody answer={answer} compact />
@@ -37,31 +39,29 @@ export function Answers({ response }: { response: SystemOneResponse }) {
   const entries = Object.entries(response.answers ?? {});
 
   return (
-    <section className="answer-board">
-      <div className="panel-head">
-        <div>
-          <h2>Jev 的回答</h2>
-          <p>
-            {response.model ? `实际模型 ${response.model}` : "已返回"}
-            {response.usage?.input_tokens !== undefined ? ` · 输入 ${response.usage.input_tokens} tokens` : ""}
-          </p>
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle>Jev 的回答</CardTitle>
+        <CardDescription>
+          {response.model ? `实际模型 ${response.model}` : "已返回"}
+          {response.usage?.input_tokens !== undefined ? ` · 输入 ${response.usage.input_tokens} tokens` : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {entries.length === 0 ? <p className="text-sm text-muted-foreground">响应里没有 answers。</p> : null}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {entries.map(([id, answer]) => (
+            <article className="rounded-xl border bg-card p-3" key={id}>
+              <header className="mb-2 flex items-center justify-between gap-2">
+                <strong>{id}</strong>
+                <Badge variant="outline">{answer.type}</Badge>
+              </header>
+              <AnswerBody answer={answer} />
+            </article>
+          ))}
         </div>
-      </div>
-      {entries.length === 0 ? <p className="quiet">响应里没有 answers。</p> : null}
-      <div className="answer-grid">
-        {entries.map(([id, answer]) => (
-          <article className="answer-card" key={id}>
-            <header>
-              <strong>{id}</strong>
-              <span className="badge" data-type={answer.type}>
-                {answer.type}
-              </span>
-            </header>
-            <AnswerBody answer={answer} />
-          </article>
-        ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -69,7 +69,7 @@ function AnswerBody({ answer, compact = false }: { answer: Answer; compact?: boo
   if (answer.type === "noul") {
     return (
       <>
-        {compact ? null : <div className="score-value">{answer.noul.toFixed(2)}</div>}
+        {compact ? null : <div className="font-heading text-4xl tracking-tight">{answer.noul.toFixed(2)}</div>}
         <Meter label="yes 的概率" value={answer.noul} />
       </>
     );
@@ -80,8 +80,8 @@ function AnswerBody({ answer, compact = false }: { answer: Answer; compact?: boo
     const rows = Object.entries(probabilities).sort((a, b) => b[1] - a[1]);
     return (
       <>
-        {compact ? null : <div className="score-value">{answer.choice}</div>}
-        {compact ? null : <p className="quiet">confidence {answer.confidence.toFixed(2)}</p>}
+        {compact ? null : <div className="font-heading text-4xl tracking-tight">{answer.choice}</div>}
+        {compact ? null : <p className="text-sm text-muted-foreground">confidence {answer.confidence.toFixed(2)}</p>}
         {rows.map(([option, probability]) => (
           <Meter key={option} label={option} value={probability} />
         ))}
@@ -93,8 +93,8 @@ function AnswerBody({ answer, compact = false }: { answer: Answer; compact?: boo
   const rows = Object.entries(probabilities).sort((a, b) => Number(a[0]) - Number(b[0]));
   return (
     <>
-      {compact ? null : <div className="score-value">{answer.score.toFixed(2)}</div>}
-      {compact ? null : <p className="quiet">confidence {answer.confidence.toFixed(2)}</p>}
+      {compact ? null : <div className="font-heading text-4xl tracking-tight">{answer.score.toFixed(2)}</div>}
+      {compact ? null : <p className="text-sm text-muted-foreground">confidence {answer.confidence.toFixed(2)}</p>}
       {rows.map(([level, probability]) => (
         <Meter key={level} label={answer.legend?.[level] ?? level} value={probability} />
       ))}

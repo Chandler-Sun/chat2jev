@@ -1,6 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDownIcon, EyeIcon, EyeOffIcon, Settings2Icon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import type { Settings } from "@/lib/storage";
 
 export function SettingsBar({
@@ -17,91 +26,111 @@ export function SettingsBar({
   const [reveal, setReveal] = useState(false);
   const patch = (partial: Partial<Settings>) => onChange({ ...settings, ...partial });
   const llmReady = settings.llmModel.trim().length > 0;
+  const hasLlmKey = settings.llmApiKey.trim().length > 0;
   const jevReady = settings.typesafeApiKey.trim().length > 0;
 
   return (
-    <section className="settings" aria-label="连接">
-      <div className="connection">
-        <div className="chips">
-          <span className="chip" data-missing={!llmReady}>
-            拆分 · {settings.llmModel || "未选模型"}
-            {settings.llmApiKey.trim() ? "" : " · 无 Key"}
-          </span>
-          <span className="chip" data-missing={!jevReady}>
-            Jev · {settings.typesafeModel || "jev-latest"}
-            {jevReady ? "" : " · 未填 Key"}
-          </span>
-        </div>
-        <button type="button" className="btn" onClick={() => onOpenChange(!open)} aria-expanded={open}>
-          {open ? "收起连接" : "连接设置"}
-        </button>
-      </div>
-      {open ? (
-        <>
-          <div className="settings-grid">
-            <label className="field">
-              <span>常规模型地址</span>
-              <input
-                value={settings.llmBaseUrl}
-                onChange={(event) => patch({ llmBaseUrl: event.target.value })}
-                placeholder="https://api.openai.com/v1"
-                spellCheck={false}
-              />
-            </label>
-            <label className="field">
-              <span>模型</span>
-              <input
-                value={settings.llmModel}
-                onChange={(event) => patch({ llmModel: event.target.value })}
-                placeholder="gpt-4.1-mini"
-                spellCheck={false}
-              />
-            </label>
-            <label className="field">
-              <span>常规模型 Key</span>
-              <input
-                type={reveal ? "text" : "password"}
-                value={settings.llmApiKey}
-                onChange={(event) => patch({ llmApiKey: event.target.value })}
-                placeholder="本地模型可以留空"
-                autoComplete="off"
-              />
-            </label>
-            <label className="field">
-              <span>TypeSafe Key</span>
-              <input
-                type={reveal ? "text" : "password"}
-                value={settings.typesafeApiKey}
-                onChange={(event) => patch({ typesafeApiKey: event.target.value })}
-                placeholder="sk-..."
-                autoComplete="off"
-              />
-            </label>
-            <label className="field">
-              <span>Jev</span>
-              <input
-                value={settings.typesafeModel}
-                onChange={(event) => patch({ typesafeModel: event.target.value })}
-                placeholder="jev-latest"
-                spellCheck={false}
-              />
-            </label>
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <Card size="sm" className="mb-3" aria-label="连接与模型设置">
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={llmReady ? "secondary" : "outline"}>
+              转换: {settings.llmModel || "未选模型"}
+              {hasLlmKey ? " · 已配 Key" : " · 免 Key / 本地"}
+            </Badge>
+            <Badge variant={jevReady ? "secondary" : "outline"}>
+              Jev: {settings.typesafeModel || "jev-latest"}
+              {jevReady ? " · 已填 Key" : " · 未填 Key"}
+            </Badge>
           </div>
-          <div className="settings-foot">
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={settings.rememberKeys}
-                onChange={(event) => patch({ rememberKeys: event.target.checked })}
-              />
-              在这台浏览器记住密钥
-            </label>
-            <button type="button" className="btn btn-ghost" onClick={() => setReveal((value) => !value)}>
-              {reveal ? "隐藏密钥" : "显示密钥"}
-            </button>
-          </div>
-        </>
-      ) : null}
-    </section>
+          <CollapsibleTrigger
+            render={<Button variant="outline" size="sm" />}
+            aria-expanded={open}
+          >
+            <Settings2Icon data-icon="inline-start" />
+            {open ? "收起设置" : "连接与模型设置"}
+            <ChevronDownIcon data-icon="inline-end" className={open ? "rotate-180" : undefined} />
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="flex flex-col gap-4 pb-4">
+            <FieldGroup>
+              <div className="grid gap-3 md:grid-cols-5">
+                <Field>
+                  <FieldLabel htmlFor="llm-base-url">转换模型 API 地址</FieldLabel>
+                  <Input
+                    id="llm-base-url"
+                    value={settings.llmBaseUrl}
+                    onChange={(event) => patch({ llmBaseUrl: event.target.value })}
+                    placeholder="https://api.openai.com/v1"
+                    spellCheck={false}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="llm-model">转换模型名称</FieldLabel>
+                  <Input
+                    id="llm-model"
+                    value={settings.llmModel}
+                    onChange={(event) => patch({ llmModel: event.target.value })}
+                    placeholder="gpt-4.1-mini"
+                    spellCheck={false}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="llm-key">转换模型 API Key</FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput
+                      id="llm-key"
+                      type={reveal ? "text" : "password"}
+                      value={settings.llmApiKey}
+                      onChange={(event) => patch({ llmApiKey: event.target.value })}
+                      placeholder="本地模型（如 Ollama）可留空"
+                      autoComplete="off"
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        aria-label={reveal ? "隐藏密钥" : "显示密钥"}
+                        onClick={() => setReveal((value) => !value)}
+                      >
+                        {reveal ? <EyeOffIcon /> : <EyeIcon />}
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="typesafe-key">TypeSafe API Key</FieldLabel>
+                  <Input
+                    id="typesafe-key"
+                    type={reveal ? "text" : "password"}
+                    value={settings.typesafeApiKey}
+                    onChange={(event) => patch({ typesafeApiKey: event.target.value })}
+                    placeholder="sk-... (必填)"
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="jev-model">Jev 模型版本</FieldLabel>
+                  <Input
+                    id="jev-model"
+                    value={settings.typesafeModel}
+                    onChange={(event) => patch({ typesafeModel: event.target.value })}
+                    placeholder="jev-latest"
+                    spellCheck={false}
+                  />
+                </Field>
+              </div>
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="remember-keys"
+                  checked={settings.rememberKeys}
+                  onCheckedChange={(checked) => patch({ rememberKeys: checked === true })}
+                />
+                <FieldLabel htmlFor="remember-keys">在这台浏览器本地记住密钥（不上传服务器）</FieldLabel>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

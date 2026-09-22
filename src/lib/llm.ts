@@ -18,6 +18,41 @@ type CompleteOptions = {
   signal?: AbortSignal;
 };
 
+export async function forwardChat(options: {
+  baseUrl: string;
+  apiKey: string;
+  body: Record<string, unknown>;
+  signal?: AbortSignal;
+}): Promise<{ content: string; model?: string; usage?: ChatUsage }> {
+  const url = chatCompletionsUrl(options.baseUrl);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.apiKey ? { Authorization: `Bearer ${options.apiKey}` } : {}),
+    },
+    body: JSON.stringify(options.body),
+    signal: options.signal,
+  });
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await readUpstreamError(response));
+  }
+
+  const payload = (await response.json()) as {
+    model?: string;
+    choices?: Array<{ message?: { content?: unknown }; text?: unknown }>;
+    usage?: ChatUsage;
+  };
+  const content =
+    messageText(payload.choices?.[0]?.message?.content) ||
+    (typeof payload.choices?.[0]?.text === "string" ? payload.choices[0].text : "");
+  if (!content.trim()) {
+    throw new HttpError(502, "模型返回了空内容");
+  }
+  return { content, model: payload.model, usage: payload.usage };
+}
+
 export async function completeChat(options: CompleteOptions): Promise<{ content: string; usage?: ChatUsage }> {
   const url = chatCompletionsUrl(options.baseUrl);
   const attempts: Record<string, unknown>[] = [

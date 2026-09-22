@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ChevronRightIcon } from "lucide-react";
 import type { Answer, ChoiceAnswer, Question } from "@/lib/types";
 
 export function JudgmentList({ children }: { children: ReactNode }) {
@@ -28,7 +29,7 @@ export function JudgmentRow({
   return (
     <article className="j-row" id={`q-${id}`} data-open={open} data-stale={Boolean(matched && stale)}>
       <button type="button" className="j-toggle" aria-expanded={open} onClick={onToggle}>
-        <Chevron />
+        <ChevronRightIcon className="j-chevron" />
         <span className="j-copy">
           <strong className="j-id">{id}</strong>
           <span className="j-instruction">{instruction || "这条指令是结构化的，展开后在 JSON 里改。"}</span>
@@ -158,14 +159,6 @@ function Level({
   );
 }
 
-function Chevron() {
-  return (
-    <svg className="j-chevron" viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M6 3.5 11 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function headline(question: Question, answer?: Answer): string {
   if (question.type === "score") {
     const max = Math.max(question.criteria.length - 1, 0);
@@ -183,10 +176,13 @@ function headline(question: Question, answer?: Answer): string {
 function metaLine(question: Question, hasAnswer: boolean): string {
   if (question.type === "score") {
     const count = question.criteria.length;
-    return `${count} levels · 0–${Math.max(count - 1, 0)}`;
+    return `${count} 级刻度 · 0–${Math.max(count - 1, 0)}`;
   }
-  if (question.type === "choice") return `${Object.keys(question.criteria).length} options`;
-  return hasAnswer ? "yes / no" : "";
+  if (question.type === "choice") {
+    const count = Object.keys(question.criteria).length;
+    return `${count} 个候选选项`;
+  }
+  return hasAnswer ? "是非判断" : "概率 0–100%";
 }
 
 function barValue(question: Question, answer?: Answer): number | null {
@@ -217,9 +213,9 @@ function formatScore(score: number): string {
 }
 
 function typeLabel(type: Question["type"]): string {
-  if (type === "noul") return "Noul";
-  if (type === "choice") return "Choice";
-  return "Score";
+  if (type === "noul") return "Noul (是非)";
+  if (type === "choice") return "Choice (单选)";
+  return "Score (打分)";
 }
 
 function instructionOf(question: Question): string {

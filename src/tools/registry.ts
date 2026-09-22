@@ -1,9 +1,10 @@
 /**
- * Tool catalog for the workbench.
+ * Tool catalog for Chat2Jev.
  * To add another Jev tool: append an entry here and create its route.
- * Ready tools are the primary navigation; planned tools stay visible
- * so later Jev workflows and the idea board have a place to land.
  */
+import type { LucideIcon } from "lucide-react";
+import { LightbulbIcon, ScaleIcon, WaypointsIcon } from "lucide-react";
+
 export type ToolStatus = "ready" | "planned";
 
 export type ToolDefinition = {
@@ -12,15 +13,25 @@ export type ToolDefinition = {
   label: string;
   description: string;
   status: ToolStatus;
+  icon: LucideIcon;
 };
 
 export const tools: ToolDefinition[] = [
   {
     id: "convert",
     href: "/",
-    label: "请求转换",
-    description: "把 OpenAI 兼容请求拆成可替换的 State 和可复用的 Questions。",
+    label: "对比",
+    description: "对照同一段请求的传统 chat completion 和 Jev 判断结果。",
     status: "ready",
+    icon: ScaleIcon,
+  },
+  {
+    id: "proxy",
+    href: "/proxy",
+    label: "代理",
+    description: "把 chat completions 自动识别并转成 System One 请求。",
+    status: "ready",
+    icon: WaypointsIcon,
   },
   {
     id: "ideas",
@@ -28,6 +39,7 @@ export const tools: ToolDefinition[] = [
     label: "Idea 广场",
     description: "收集、比较和筛选想法。",
     status: "planned",
+    icon: LightbulbIcon,
   },
 ];
 

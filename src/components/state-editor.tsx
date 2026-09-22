@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BracesIcon, ListChecksIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import type { FieldNote } from "@/lib/types";
 import { pretty } from "@/lib/conversion";
 
@@ -21,44 +26,43 @@ export function StateEditor({
   const showFields = mode === "fields" && record !== null;
 
   return (
-    <div>
-      <div className="tab-row" role="tablist">
-        <button type="button" className="tab" data-active={mode === "fields"} onClick={() => setMode("fields")}>
+    <Tabs value={showFields ? mode : "json"} onValueChange={(value) => setMode(value as "fields" | "json")}>
+      <TabsList variant="line">
+        <TabsTrigger value="fields">
+          <ListChecksIcon data-icon="inline-start" />
           字段
-        </button>
-        <button type="button" className="tab" data-active={mode === "json"} onClick={() => setMode("json")}>
+        </TabsTrigger>
+        <TabsTrigger value="json">
+          <BracesIcon data-icon="inline-start" />
           JSON
-        </button>
-      </div>
-      {showFields ? (
-        <div className="field-stack" key={revision}>
-          {Object.entries(record ?? {}).map(([key, value]) => (
-            <FieldControl
-              key={key}
-              name={key}
-              value={value}
-              note={fields.find((field) => field.path === key)?.description}
-              replaceable={fields.find((field) => field.path === key)?.replaceable}
-              onChange={(next) => onTextChange(pretty({ ...(record ?? {}), [key]: next }))}
-            />
-          ))}
-        </div>
-      ) : (
-        <>
-          {!parsed.ok ? <p className="error-text">{parsed.error}</p> : null}
-          {parsed.ok && !isRecord(parsed.value) ? (
-            <p className="quiet">这份 State 是{Array.isArray(parsed.value) ? "数组" : "一段文本"}，直接在 JSON 里替换。</p>
-          ) : null}
-          <textarea
-            className="editor"
-            value={text}
-            spellCheck={false}
-            aria-label="State JSON"
-            onChange={(event) => onTextChange(event.target.value)}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="fields" className="flex flex-col gap-3" key={revision}>
+        {Object.entries(record ?? {}).map(([key, value]) => (
+          <FieldControl
+            key={key}
+            name={key}
+            value={value}
+            note={fields.find((field) => field.path === key)?.description}
+            replaceable={fields.find((field) => field.path === key)?.replaceable}
+            onChange={(next) => onTextChange(pretty({ ...(record ?? {}), [key]: next }))}
           />
-        </>
-      )}
-    </div>
+        ))}
+      </TabsContent>
+      <TabsContent value="json" className="flex flex-col gap-2">
+        {!parsed.ok ? <p className="text-sm text-destructive">{parsed.error}</p> : null}
+        {parsed.ok && !isRecord(parsed.value) ? (
+          <p className="text-sm text-muted-foreground">这份 State 是{Array.isArray(parsed.value) ? "数组" : "一段文本"}，直接在 JSON 里替换。</p>
+        ) : null}
+        <Textarea
+          className="editor"
+          value={text}
+          spellCheck={false}
+          aria-label="State JSON"
+          onChange={(event) => onTextChange(event.target.value)}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -80,15 +84,16 @@ function FieldControl({
   const shown = draft ?? (isString ? value : JSON.stringify(value, null, 2));
 
   return (
-    <label className="field">
-      <span>
-        {name}
-        {replaceable ? " · 可替换" : ""}
-      </span>
-      <textarea
+    <Field>
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel className="font-mono text-sm">{name}</FieldLabel>
+        <Badge variant={replaceable ? "secondary" : "outline"}>{replaceable ? "待测字段" : "固定上下文"}</Badge>
+      </div>
+      <Textarea
         className="editor short"
         value={shown}
         spellCheck={isString}
+        aria-label={name}
         onChange={(event) => {
           const next = event.target.value;
           if (isString) {
@@ -104,9 +109,9 @@ function FieldControl({
           }
         }}
       />
-      {note ? <span className="quiet">{note}</span> : null}
-      {draft ? <span className="error-text">这段 JSON 还没写完</span> : null}
-    </label>
+      {note ? <FieldDescription>{note}</FieldDescription> : null}
+      {draft ? <p className="text-sm text-destructive">这段 JSON 还没写完</p> : null}
+    </Field>
   );
 }
 
