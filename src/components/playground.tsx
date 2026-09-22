@@ -9,6 +9,7 @@ import {
   MoreHorizontalIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  PlayIcon,
   RefreshCwIcon,
   RouteIcon,
   ScaleIcon,
@@ -18,7 +19,6 @@ import {
 import { useDefaultLayout } from "react-resizable-panels";
 import { layoutStorage } from "@/lib/layout-storage";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { FitBadge } from "@/components/answers";
 import { ComparePane, type ChatRun } from "@/components/compare-pane";
 import { QuestionEditor } from "@/components/question-editor";
@@ -36,7 +36,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Kbd } from "@/components/ui/kbd";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Spinner } from "@/components/ui/spinner";
@@ -71,7 +73,7 @@ export function Playground() {
   const [revision, setRevision] = useState(0);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState<"convert" | "compare" | null>(null);
+  const [busy, setBusy] = useState<"convert" | "compare" | "jev" | null>(null);
   const [response, setResponse] = useState<SystemOneResponse | null>(null);
   const [chat, setChat] = useState<ChatRun | null>(null);
   const [chatError, setChatError] = useState("");
@@ -255,9 +257,50 @@ export function Playground() {
     }
   }
 
+  async function fetchJev() {
+    if (!stateParsed.success || !questionsParsed?.success) {
+      throw new Error("先转换出可用的 State 和 Questions。");
+    }
+    const snapshot = `${stateText}\n---\n${questionsText}`;
+    const result = await postJson<SystemOneResponse>("/api/evaluate", {
+      apiKey: settings.typesafeApiKey,
+      model: settings.typesafeModel,
+      state: stateParsed.data,
+      questions: questionsParsed.data,
+    });
+    setResponse(result);
+    setRanSignature(snapshot);
+  }
+
+  async function runJev() {
+    if (!canJev) {
+      setError("先转换出 Questions，再测试 Jev。");
+      return;
+    }
+    if (!settings.typesafeApiKey.trim()) {
+      setSettingsOpen(true);
+      setJevError("先填写 TypeSafe Key，再跑 Jev。");
+      return;
+    }
+
+    setBusy("jev");
+    setError("");
+    setJevError("");
+    setStatus("正在问 Jev…");
+    try {
+      await fetchJev();
+      setStatus("Jev 已返回。可在右侧看概率，或再跑对比。");
+      toast.success("Jev 测试完成");
+    } catch (caught) {
+      setJevError(caught instanceof Error ? caught.message : "Jev 调用失败");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function runCompare() {
     const runChat = canChat && Boolean(settings.llmModel.trim());
-    const runJev = canJev && Boolean(settings.typesafeApiKey.trim());
+    const runJevSide = canJev && Boolean(settings.typesafeApiKey.trim());
 
     if (!canCompare) {
       setError("先载入原请求，或转换出 Questions。");
@@ -271,7 +314,7 @@ export function Playground() {
       setSettingsOpen(true);
       setJevError("先填写 TypeSafe Key，再跑 Jev。");
     }
-    if (!runChat && !runJev) {
+    if (!runChat && !runJevSide) {
       setError("先补齐至少一侧的模型设置，再运行对比。");
       return;
     }
@@ -280,7 +323,7 @@ export function Playground() {
     setError("");
     setChatError("");
     setJevError("");
-    setStatus(runChat && runJev ? "正在同时跑 Chat 和 Jev…" : runChat ? "正在跑传统 Chat…" : "正在问 Jev…");
+    setStatus(runChat && runJevSide ? "正在同时跑 Chat 和 Jev…" : runChat ? "正在跑传统 Chat…" : "正在问 Jev…");
 
     const tasks: Promise<void>[] = [];
     if (runChat) {
@@ -303,19 +346,11 @@ export function Playground() {
         })(),
       );
     }
-    if (runJev && stateParsed.success && questionsParsed?.success) {
-      const snapshot = `${stateText}\n---\n${questionsText}`;
+    if (runJevSide) {
       tasks.push(
         (async () => {
           try {
-            const result = await postJson<SystemOneResponse>("/api/evaluate", {
-              apiKey: settings.typesafeApiKey,
-              model: settings.typesafeModel,
-              state: stateParsed.data,
-              questions: questionsParsed.data,
-            });
-            setResponse(result);
-            setRanSignature(snapshot);
+            await fetchJev();
           } catch (caught) {
             setJevError(caught instanceof Error ? caught.message : "Jev 调用失败");
           }
@@ -343,7 +378,7 @@ export function Playground() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const compareLabel = canChat && canJev ? "运行对比" : canChat ? "运行 Chat" : canJev ? "运行 Jev" : "运行对比";
+  const compareLabel = canChat && canJev ? "运行对比" : canChat ? "运行 Chat" : "运行对比";
   const panelIds = ["source", "state", "questions", "results"];
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     storage: layoutStorage,
@@ -520,6 +555,10 @@ export function Playground() {
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" disabled={busy !== null || !canJev} onClick={runJev}>
+                      {busy === "jev" ? <Spinner data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
+                      {busy === "jev" ? "测试中…" : "测试 Jev"}
+                    </Button>
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -640,6 +679,16 @@ export function Playground() {
             {busy === "convert" ? <Spinner data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
             {busy === "convert" ? "转换中…" : "转换成 Jev"}
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            disabled={busy !== null || !canJev}
+            onClick={runJev}
+          >
+            {busy === "jev" ? <Spinner data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
+            {busy === "jev" ? "测试中…" : "测试 Jev"}
+          </Button>
           <Button type="button" variant="copper" disabled={busy !== null || !canCompare} onClick={runCompare}>
             {busy === "compare" ? <Spinner data-icon="inline-start" /> : stale || chatStale ? <RefreshCwIcon data-icon="inline-start" /> : <ScaleIcon data-icon="inline-start" />}
             {busy === "compare" ? "正在对比…" : stale || chatStale ? "重新对比" : compareLabel}
@@ -651,47 +700,42 @@ export function Playground() {
 }
 
 function ConversionNotes({ conversion }: { conversion: Conversion }) {
-  const [open, setOpen] = useState(false);
   const warnings = conversion.warnings;
 
   return (
-    <div
-      className={cn("flex flex-col", open && warnings.length > 0 ? "gap-1.5" : "gap-0")}
-      data-open={open ? "true" : "false"}
-      onPointerEnter={() => {
-        if (warnings.length > 0) setOpen(true);
-      }}
-      onPointerLeave={() => setOpen(false)}
-    >
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0">
         <FitBadge fit={conversion.fit} />
-        <span className="min-w-0 flex-1 text-sm text-muted-foreground">{conversion.summary}</span>
-        {warnings.length > 0 ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            data-tone="copper"
-            className="cursor-help"
-            aria-expanded={open}
-            aria-label={`转换注意点 ${warnings.length} 条，悬停查看`}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setOpen(false)}
+      </span>
+      <HoverCard>
+        <HoverCardTrigger
+          render={<span className="min-w-0 flex-1 truncate text-left text-sm text-muted-foreground" />}
+        >
+          {conversion.summary}
+        </HoverCardTrigger>
+        <HoverCardContent align="start" side="bottom" className="w-80 max-w-[min(22rem,calc(100vw-1.5rem))]">
+          <p className="text-sm leading-6">{conversion.summary}</p>
+        </HoverCardContent>
+      </HoverCard>
+      {warnings.length > 0 ? (
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                data-tone="copper"
+                className="shrink-0"
+                aria-label={`转换注意点 ${warnings.length} 条`}
+              />
+            }
           >
             <AlertTriangleIcon data-icon="inline-start" />
             注意点 {warnings.length}
-          </Button>
-        ) : null}
-      </div>
-      {warnings.length > 0 ? (
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows,opacity] duration-200",
-            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-          )}
-        >
-          <div className="overflow-hidden">
-            <Alert data-tone="copper">
+          </PopoverTrigger>
+          <PopoverContent align="end" side="bottom" sideOffset={8} className="w-80 max-w-[min(22rem,calc(100vw-1.5rem))]">
+            <Alert data-tone="copper" className="border-0 bg-transparent p-0 shadow-none">
               <AlertTriangleIcon />
               <AlertTitle>转换注意点</AlertTitle>
               <AlertDescription>
@@ -700,8 +744,8 @@ function ConversionNotes({ conversion }: { conversion: Conversion }) {
                 ))}
               </AlertDescription>
             </Alert>
-          </div>
-        </div>
+          </PopoverContent>
+        </Popover>
       ) : null}
     </div>
   );

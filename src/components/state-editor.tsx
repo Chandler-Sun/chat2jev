@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BracesIcon, ListChecksIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { FieldNote } from "@/lib/types";
@@ -41,7 +42,7 @@ export function StateEditor({
           JSON
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="fields" className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto" key={revision}>
+      <TabsContent value="fields" className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto" key={revision}>
         {Object.entries(record ?? {}).map(([key, value]) => (
           <FieldControl
             key={key}
@@ -86,34 +87,48 @@ function FieldControl({
   const [draft, setDraft] = useState<string | null>(null);
   const isString = typeof value === "string";
   const shown = draft ?? (isString ? value : JSON.stringify(value, null, 2));
+  const compact = isString && !shown.includes("\n") && shown.length <= 80;
+
+  function commit(next: string) {
+    if (isString) {
+      onChange(next);
+      return;
+    }
+    setDraft(next);
+    try {
+      onChange(JSON.parse(next) as unknown);
+      setDraft(null);
+    } catch {
+      // Keep the draft until the JSON is valid again.
+    }
+  }
 
   return (
-    <Field>
-      <div className="flex items-center justify-between gap-2">
-        <FieldLabel className="font-mono text-sm">{name}</FieldLabel>
-        <Badge variant={replaceable ? "secondary" : "outline"}>{replaceable ? "待测字段" : "固定上下文"}</Badge>
+    <Field className="gap-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <FieldLabel className="min-w-0 truncate font-mono text-sm" title={name}>
+          {name}
+        </FieldLabel>
+        <Badge className="shrink-0" variant={replaceable ? "secondary" : "outline"}>
+          {replaceable ? "待测字段" : "固定上下文"}
+        </Badge>
       </div>
-      <Textarea
-        className="editor short"
-        value={shown}
-        spellCheck={isString}
-        aria-label={name}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (isString) {
-            onChange(next);
-            return;
-          }
-          setDraft(next);
-          try {
-            onChange(JSON.parse(next) as unknown);
-            setDraft(null);
-          } catch {
-            // Keep the draft until the JSON is valid again.
-          }
-        }}
-      />
-      {note ? <FieldDescription>{note}</FieldDescription> : null}
+      {compact ? (
+        <Input value={shown} spellCheck={isString} aria-label={name} onChange={(event) => commit(event.target.value)} />
+      ) : (
+        <Textarea
+          className="field-sizing-content min-h-16 max-h-56 resize-y bg-card text-sm"
+          value={shown}
+          spellCheck={isString}
+          aria-label={name}
+          onChange={(event) => commit(event.target.value)}
+        />
+      )}
+      {note ? (
+        <FieldDescription className="line-clamp-1" title={note}>
+          {note}
+        </FieldDescription>
+      ) : null}
       {draft ? <p className="text-sm text-destructive">这段 JSON 还没写完</p> : null}
     </Field>
   );
