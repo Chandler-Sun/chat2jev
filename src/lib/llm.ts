@@ -53,7 +53,9 @@ export async function forwardChat(options: {
   return { content, model: payload.model, usage: payload.usage };
 }
 
-export async function completeChat(options: CompleteOptions): Promise<{ content: string; usage?: ChatUsage }> {
+export async function completeChat(
+  options: CompleteOptions,
+): Promise<{ content: string; model: string; usage?: ChatUsage }> {
   const url = chatCompletionsUrl(options.baseUrl);
   const attempts: Record<string, unknown>[] = [
     {
@@ -84,6 +86,7 @@ export async function completeChat(options: CompleteOptions): Promise<{ content:
 
     if (response.ok) {
       const payload = (await response.json()) as {
+        model?: string;
         choices?: Array<{ message?: { content?: unknown } }>;
         usage?: ChatUsage;
       };
@@ -91,7 +94,7 @@ export async function completeChat(options: CompleteOptions): Promise<{ content:
       if (!content.trim()) {
         throw new HttpError(502, "模型返回了空内容");
       }
-      return { content, usage: payload.usage };
+      return { content, model: payload.model?.trim() || options.model, usage: payload.usage };
     }
 
     lastStatus = response.status;

@@ -94,11 +94,16 @@ test("fenced model output parses", () => {
   assert.deepEqual(parsed, { title: "ok" });
 });
 
-test("chat forward keeps the original model and messages", () => {
-  const body = buildChatForwardBody(samples[0].source, "fallback-model");
-  assert.equal(body.model, "gpt-4.1-mini");
+test("chat forward prefers the configured conversion model", () => {
+  const body = buildChatForwardBody(samples[0].source, "qwen2.5");
+  assert.equal(body.model, "qwen2.5");
   assert.equal(body.stream, false);
   assert.equal(Array.isArray(body.messages), true);
+});
+
+test("chat forward keeps the original model when settings model is empty", () => {
+  const body = buildChatForwardBody(samples[0].source, "");
+  assert.equal(body.model, "gpt-4.1-mini");
 });
 
 test("chat forward ignores jev slugs and uses the fallback model", () => {

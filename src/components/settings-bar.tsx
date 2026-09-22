@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import type { Settings } from "@/lib/storage";
@@ -75,6 +75,7 @@ export function SettingsBar({
                     placeholder="gpt-4.1-mini"
                     spellCheck={false}
                   />
+                  <FieldDescription>转换和传统 Chat 都用这个名字，不跟原请求里的 model 走。</FieldDescription>
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="llm-key">转换模型 API Key</FieldLabel>

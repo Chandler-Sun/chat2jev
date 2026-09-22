@@ -4,7 +4,9 @@ import { extractRequestPayload, normalizeRequest } from "./openai-request";
 export function buildChatForwardBody(source: string, fallbackModel: string): Record<string, unknown> {
   const normalized = normalizeRequest(extractRequestPayload(source));
   const requested = normalized.model?.trim() ?? "";
-  const model = requested && !requested.startsWith("jev:") ? requested : fallbackModel.trim();
+  const configured = fallbackModel.trim();
+  const sourceModel = requested && !requested.startsWith("jev:") ? requested : "";
+  const model = configured || sourceModel;
   if (!model) {
     throw new HttpError(400, "先填写转换模型名称，或在原请求里带上 model");
   }

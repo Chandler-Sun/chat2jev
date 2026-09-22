@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     try {
       const conversion = finalizeConversion(parseModelJson(first.content), normalized.notes);
-      return Response.json({ conversion, usage: first.usage, normalized });
+      return Response.json({ conversion, model: first.model, usage: first.usage, normalized });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "结构不符合";
       const repaired = await completeChat({
@@ -63,7 +63,12 @@ export async function POST(request: Request) {
         signal: AbortSignal.any([request.signal, AbortSignal.timeout(70_000)]),
       });
       const conversion = finalizeConversion(parseModelJson(repaired.content), normalized.notes);
-      return Response.json({ conversion, usage: repaired.usage ?? first.usage, normalized });
+      return Response.json({
+        conversion,
+        model: repaired.model || first.model,
+        usage: repaired.usage ?? first.usage,
+        normalized,
+      });
     }
   } catch (error) {
     if (error instanceof HttpError) return jsonError(error.status, error.message);
