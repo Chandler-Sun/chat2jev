@@ -239,7 +239,19 @@
 }
 
 [data-slot="card"][data-tone] {
-  box-shadow: inset 3px 0 0 var(--tone);
+  position: relative;
+  gap: 0;
+  padding-block: 0;
+}
+
+[data-slot="card"][data-tone]::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  width: 3px;
+  background: var(--tone);
+  pointer-events: none;
 }
 
 [data-slot="card"][data-tone] [data-slot="card-header"] {
@@ -254,6 +266,20 @@
   background: var(--tone-soft);
   color: var(--tone);
   border-color: color-mix(in srgb, var(--tone) 22%, transparent);
+}
+
+[data-slot="alert"][data-tone] {
+  background: var(--tone-soft);
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 32%, transparent);
+}
+
+[data-slot="alert"][data-tone] [data-slot="alert-title"] {
+  color: var(--tone);
+}
+
+[data-slot="alert"][data-tone] [data-slot="alert-description"] {
+  color: color-mix(in srgb, var(--tone) 78%, var(--foreground));
 }
 
 [data-slot="button"][data-tone] {
@@ -276,7 +302,7 @@
 }
 
 .tone-well {
-  background: color-mix(in srgb, var(--tone-soft) 72%, transparent);
+  background: var(--tone-soft);
 }
 
 .editor {

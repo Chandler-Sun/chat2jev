@@ -53,7 +53,7 @@ export function ComparePane({
       className="min-h-0 flex-1"
     >
       <ResizablePanel id="chat" defaultSize="50" minSize="22" className="min-h-0 min-w-0">
-        <section data-tone="chat" className="tone-well flex h-full min-h-0 flex-col gap-2 rounded-xl p-2" aria-label="传统 Chat Completion">
+        <section data-tone="chat" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label="传统 Chat Completion">
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline" data-tone="ink">Chat</Badge>
@@ -82,7 +82,7 @@ export function ComparePane({
       </ResizablePanel>
       <ResizableHandle withHandle className="bg-transparent" />
       <ResizablePanel id="jev" defaultSize="50" minSize="22" className="min-h-0 min-w-0">
-        <section data-tone="jev" className="tone-well flex h-full min-h-0 flex-col gap-2 rounded-xl p-2" aria-label="Jev System One">
+        <section data-tone="jev" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label="Jev System One">
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline" data-tone="moss">Jev</Badge>

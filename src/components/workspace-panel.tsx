@@ -12,28 +12,32 @@ export function WorkspacePanel({
   tone,
   className,
   contentClassName,
+  hideContent = false,
 }: {
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   tone?: WorkspaceTone;
   className?: string;
   contentClassName?: string;
+  hideContent?: boolean;
 }) {
   return (
-    <Card size="sm" data-tone={tone} className={cn("h-full min-h-0 gap-2 py-2", className)}>
-      <CardHeader className="shrink-0 border-b pb-2">
+    <Card size="sm" data-tone={tone} className={cn("h-full min-h-0 gap-0 py-0", className)}>
+      <CardHeader className="shrink-0 rounded-none border-b py-2.5">
         <CardTitle className="flex items-center gap-2">
           {tone ? <span className="tone-dot" aria-hidden="true" /> : null}
           {title}
         </CardTitle>
-        {description ? <CardDescription className="line-clamp-2">{description}</CardDescription> : null}
+        {description && !hideContent ? <CardDescription className="line-clamp-2">{description}</CardDescription> : null}
         {action ? <CardAction>{action}</CardAction> : null}
       </CardHeader>
-      <CardContent className={cn("flex min-h-0 flex-1 flex-col overflow-auto", contentClassName)}>
-        {children}
-      </CardContent>
+      {hideContent ? null : (
+        <CardContent className={cn("flex min-h-0 flex-1 flex-col overflow-auto py-3", contentClassName)}>
+          {children}
+        </CardContent>
+      )}
     </Card>
   );
 }
