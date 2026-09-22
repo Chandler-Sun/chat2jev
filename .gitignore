@@ -11,3 +11,7 @@ coverage
 .wrangler
 tsconfig.tsbuildinfo
 data
+.dev.vars.*
+!.dev.vars.example
+*.pem
+*.key
