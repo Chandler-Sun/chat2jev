@@ -362,17 +362,26 @@
   border-top: 0;
 }
 
-.j-toggle {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  min-width: 0;
+.j-head {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 6px 18px;
+  align-items: start;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.j-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .j-chevron {
@@ -576,7 +585,8 @@
 }
 
 @media (max-width: 980px) {
-  .j-row {
+  .j-row,
+  .j-head {
     grid-template-columns: 1fr;
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MessageSquareTextIcon, ScaleIcon } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
 import { layoutStorage } from "@/lib/layout-storage";
@@ -94,28 +95,9 @@ export function ComparePane({
           </div>
           {jevError ? <p className="shrink-0 text-sm text-destructive">{jevError}</p> : null}
           {stale && jev ? <p className="shrink-0 text-xs text-copper">State 已改，下方是上次 Jev 结果</p> : null}
-          {questions && jev ? (
+          {questions ? (
             <div className="min-h-0 flex-1 overflow-auto">
-              <JudgmentList>
-                {Object.entries(questions).map(([id, question]) => (
-                  <JudgmentRow key={id} id={id} question={question} answer={jev.answers?.[id]} stale={stale} open onToggle={() => undefined} />
-                ))}
-              </JudgmentList>
-            </div>
-          ) : questions && !jev ? (
-            <div className="min-h-0 flex-1 overflow-auto">
-              <JudgmentList>
-                {Object.entries(questions).map(([id, question]) => (
-                  <JudgmentRow key={id} id={id} question={question} open={false} onToggle={() => undefined}>
-                    {notes.find((note) => note.id === id)?.purpose ? (
-                      <p className="j-purpose">
-                        <Badge variant="secondary">业务目的</Badge>
-                        {notes.find((note) => note.id === id)?.purpose}
-                      </p>
-                    ) : null}
-                  </JudgmentRow>
-                ))}
-              </JudgmentList>
+              <CompareJudgments questions={questions} notes={notes} jev={jev} stale={stale} />
             </div>
           ) : (
             <Empty className="min-h-0 flex-1 border border-dashed">
@@ -132,6 +114,59 @@ export function ComparePane({
       </ResizablePanel>
     </ResizablePanelGroup>
     </ClientOnly>
+  );
+}
+
+function CompareJudgments({
+  questions,
+  notes,
+  jev,
+  stale,
+}: {
+  questions: NonNullable<ReturnType<typeof parseQuestions>>;
+  notes: QuestionNote[];
+  jev: SystemOneResponse | null;
+  stale: boolean;
+}) {
+  const ids = Object.keys(questions);
+  const idsKey = ids.join("\0");
+  const hasJev = Boolean(jev);
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(hasJev ? ids : []));
+
+  useEffect(() => {
+    setOpenIds(new Set(hasJev ? idsKey.split("\0").filter(Boolean) : []));
+  }, [hasJev, idsKey]);
+
+  function toggle(id: string) {
+    setOpenIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <JudgmentList>
+      {Object.entries(questions).map(([id, question]) => (
+        <JudgmentRow
+          key={id}
+          id={id}
+          question={question}
+          answer={jev?.answers?.[id]}
+          stale={stale}
+          open={openIds.has(id)}
+          onToggle={() => toggle(id)}
+        >
+          {!jev && notes.find((note) => note.id === id)?.purpose ? (
+            <p className="j-purpose">
+              <Badge variant="secondary">业务目的</Badge>
+              {notes.find((note) => note.id === id)?.purpose}
+            </p>
+          ) : null}
+        </JudgmentRow>
+      ))}
+    </JudgmentList>
   );
 }
 

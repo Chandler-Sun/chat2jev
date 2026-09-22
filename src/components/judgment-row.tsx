@@ -28,14 +28,16 @@ export function JudgmentRow({
 
   return (
     <article className="j-row" id={`q-${id}`} data-kind={question.type} data-open={open} data-stale={Boolean(matched && stale)}>
-      <button type="button" className="j-toggle" aria-expanded={open} onClick={onToggle}>
-        <ChevronRightIcon className="j-chevron" />
-        <span className="j-copy">
-          <strong className="j-id">{id}</strong>
-          <span className="j-instruction">{instruction || "这条指令是结构化的，展开后在 JSON 里改。"}</span>
+      <button type="button" className="j-head" aria-expanded={open} onClick={onToggle}>
+        <span className="j-toggle">
+          <ChevronRightIcon className="j-chevron" />
+          <span className="j-copy">
+            <strong className="j-id">{id}</strong>
+            <span className="j-instruction">{instruction || "这条指令是结构化的，展开后在 JSON 里改。"}</span>
+          </span>
         </span>
+        <Side question={question} answer={matched} stale={stale} />
       </button>
-      <Side question={question} answer={matched} stale={stale} />
       {open ? (
         <div className="j-expand">
           <CriteriaView question={question} answer={matched} />
