@@ -12,7 +12,7 @@
 
 ![Chat2Jev 工作台：原始 Chat 请求、State、Questions，以及 Chat 输出与 Jev 判断结果的并排对比](docs/images/chat2jev-preview.png)
 
-在同一工作台中查看原始请求、编辑 State 和 Questions，并对比 Chat 与 Jev 的结果。图中以候选人求职意向判断为例，展示 Jev 的选项概率与评分。
+在同一工作台中查看原始请求、编辑 State 和 Questions，并对比 Chat 与 Jev 的结果。图中以客服工单分流为例，展示 Jev 对处理部门、退款诉求等问题的判断及其概率。
 
 ## 能做什么
 

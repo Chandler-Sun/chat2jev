@@ -10,7 +10,7 @@ Chat2Jev is an independent, experimental workbench for local use or deployment i
 
 ![Chat2Jev workbench showing the original Chat request, State, Questions, and a side-by-side comparison of Chat output and Jev judgments](docs/images/chat2jev-preview.png)
 
-The workbench brings the original request, editable State and Questions, and Chat / Jev results into one view. This example shows candidate intent classification, including Jev choice probabilities and scores.
+The workbench brings the original request, editable State and Questions, and Chat / Jev results into one view. This example shows customer support ticket triage, including department selection, refund judgments, and their probabilities.
 
 ## Features
 
