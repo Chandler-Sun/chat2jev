@@ -6,4 +6,8 @@ coverage
 *.log
 .env*
 !.env.example
+.dev.vars
+.open-next
+.wrangler
 tsconfig.tsbuildinfo
+data
