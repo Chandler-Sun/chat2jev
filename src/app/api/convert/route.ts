@@ -19,9 +19,9 @@ export async function POST(request: Request) {
     const baseUrl = body.baseUrl?.trim() ?? "";
     const model = body.model?.trim() ?? "";
     const source = body.source ?? "";
-    if (!baseUrl) return jsonError(400, "先填写常规模型的服务地址");
-    if (!model) return jsonError(400, "先填写常规模型的名字");
-    if (source.length > 500_000) return jsonError(400, "请求太长了，请先裁剪再拆分");
+    if (!baseUrl) return jsonError(400, "先填写转换模型的服务地址");
+    if (!model) return jsonError(400, "先填写转换模型的名字");
+    if (source.length > 500_000) return jsonError(400, "请求太长了，请先裁剪再转换");
 
     const normalized = normalizeRequest(extractRequestPayload(source));
     const messages: ChatMessage[] = [
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       {
         role: "user",
         content: JSON.stringify({
-          task: "把下面的 OpenAI 兼容请求拆成 State 和 Questions",
+          task: "把下面的 OpenAI 兼容 chat completion 转成 State 和 Questions",
           request: normalized,
         }),
       },
@@ -68,12 +68,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof HttpError) return jsonError(error.status, error.message);
     if (error instanceof Error && error.name === "TimeoutError") {
-      return jsonError(504, "常规模型超时了，可以换一个更快的模型再试");
+      return jsonError(504, "转换模型超时了，可以换一个更快的模型再试");
     }
     if (error instanceof Error && error.name === "AbortError") {
       return jsonError(499, "请求已取消");
     }
-    const message = error instanceof Error ? error.message : "拆分失败";
+    const message = error instanceof Error ? error.message : "转换失败";
     if (message === "fetch failed") return jsonError(502, "连不上这个模型地址");
     return jsonError(502, message);
   }

@@ -2,7 +2,7 @@ export const CONVERSION_SYSTEM_PROMPT = `你把 OpenAI 兼容的 chat completion
 
 Jev 不生成文章、不写解释。它只对一份 State 做若干个狭窄判断，并返回概率。代码负责流程，模型负责判断。
 
-拆分规则：
+转换规则：
 1. State 放要被判断的事实：来信、记录、对话、政策原文、当前数据。优先使用带名字的 JSON 对象。判断指令不要放进 State。
 2. Questions 可以整组复用。不要把这一次的实例原文写进 instructions 或 criteria。用反引号路径指向 State，例如 \`ticket.messages[0].text\`。
 3. 每个问题只做一个瞬间能完成的判断。复合任务拆开。同一份 State 上的问题互相看不见答案，所以能并行的都放在这一次里。
@@ -20,7 +20,7 @@ Jev 不生成文章、不写解释。它只对一份 State 做若干个狭窄判
 JSON 形状：
 {
   "title": "短标题",
-  "summary": "这次拆分在做什么",
+  "summary": "这次转换在做什么",
   "fit": "judgment" | "mixed" | "generative",
   "warnings": ["需要人知道的限制"],
   "state": { "命名字段": "这一次的实例" },

@@ -103,7 +103,7 @@ export const ticketConversion: Conversion = {
   summary: "部门、退款诉求、政策是否覆盖、不满程度，都是对同一封来信的独立判断。",
   fit: "judgment",
   warnings: [
-    "示例拆分没有调用模型。Jev 以英文判断最稳，中文样本建议对照置信度再决定是否自动处理。",
+    "示例转换没有调用模型。Jev 以英文判断最稳，中文样本建议对照置信度再决定是否自动处理。",
   ],
   state: ticketState,
   fields: [

@@ -38,7 +38,7 @@ export function normalizeRequest(payload: unknown): NormalizedRequest {
   if (Array.isArray(clean)) {
     const messages = clean.map((item, index) => coerceMessage(item, index, notes)).filter(isMessage);
     if (messages.length === 0) {
-      throw new HttpError(400, "没有找到可拆分的消息");
+      throw new HttpError(400, "没有找到可转换的消息");
     }
     return { messages, notes };
   }
