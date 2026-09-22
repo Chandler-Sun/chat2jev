@@ -52,9 +52,10 @@ The app currently has no built-in authentication, permission isolation, or rate 
 | `npm run lint` | Run ESLint; warnings also fail the check |
 | `npm run typecheck` | Check TypeScript types |
 | `npm test` | Run local unit tests without model calls |
-| `npm run build` | Create a Next.js production build |
-| `npm run build:worker` | Create the Cloudflare Worker bundle (OpenNext) |
-| `npm start -- --hostname 127.0.0.1` | Serve the Next.js production build |
+| `npm run build` | Create the Cloudflare Worker bundle (OpenNext) |
+| `npm run build:next` | Create a Next.js-only production build |
+| `npm run build:worker` | Same as `npm run build`; kept for older dashboard settings |
+| `npm start -- --hostname 127.0.0.1` | Serve the Next.js-only production build |
 | `npm run preview` | Build and preview the Cloudflare Worker |
 | `npm run deploy` | Build and deploy to the current Cloudflare account |
 
@@ -95,7 +96,7 @@ npm run preview
 npm run deploy
 ```
 
-Cloudflare Workers Builds should use `npm run build:worker` (or `npx opennextjs-cloudflare build`) as the build command. `npm run build` is the Next.js compile that OpenNext and CI call. Do not start Wrangler during that compile — it hangs static generation on the build image.
+Cloudflare Workers Builds can keep `npm run build`. That now runs OpenNext and writes `.open-next/worker.js` for `npx wrangler deploy`. A plain `next build` is not enough: Wrangler then fails with “Could not find compiled Open Next config”.
 
 You can change the Worker name in `wrangler.jsonc`. `.dev.vars` is for local configuration; do not commit real credentials.
 

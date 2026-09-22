@@ -54,8 +54,9 @@ npm run dev -- --hostname 127.0.0.1
 | `npm run lint` | ESLint 检查，警告也会失败 |
 | `npm run typecheck` | TypeScript 类型检查 |
 | `npm test` | 运行本地单元测试，不调用模型 |
-| `npm run build` | Next.js 生产构建 |
-| `npm run build:worker` | 用 OpenNext 打出 Cloudflare Worker 包 |
+| `npm run build` | 用 OpenNext 打出 Cloudflare Worker 包 |
+| `npm run build:next` | 只做 Next.js 生产构建 |
+| `npm run build:worker` | 与 `npm run build` 相同，留给旧的控制台配置 |
 | `npm start -- --hostname 127.0.0.1` | 运行 Next.js 生产构建 |
 | `npm run preview` | 构建并预览 Cloudflare Worker |
 | `npm run deploy` | 构建并部署到当前 Cloudflare 账号 |
@@ -95,7 +96,7 @@ npm run preview
 npm run deploy
 ```
 
-Cloudflare Workers Builds 的构建命令应设为 `npm run build:worker`（或 `npx opennextjs-cloudflare build`）。`npm run build` 是 OpenNext 和 CI 会调用的 Next.js 编译。不要在这次编译里启动 Wrangler，否则构建镜像上的静态生成会卡住。
+Cloudflare Workers Builds 可以继续用 `npm run build`。它现在会跑 OpenNext 并生成 `.open-next/worker.js`，供 `npx wrangler deploy` 使用。只跑 `next build` 不够：Wrangler 接着会报 “Could not find compiled Open Next config”。
 
 `wrangler.jsonc` 中的 Worker 名称可以修改。`.dev.vars` 只用于本地配置，不应提交真实凭据。
 
