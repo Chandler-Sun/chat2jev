@@ -42,6 +42,7 @@ function isCloudflareWorkerRuntime(): boolean {
 }
 
 async function getRouteKv(): Promise<RouteKv | null> {
+  if (process.env.NEXT_PHASE === "phase-production-build") return null;
   try {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
     const { env } = await getCloudflareContext({ async: true });
