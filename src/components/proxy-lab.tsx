@@ -16,6 +16,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientOnly } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { pretty } from "@/lib/conversion";
 import { samples } from "@/lib/samples";
@@ -132,6 +133,7 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
     <div className="flex h-full min-h-0 flex-col gap-2">
       <SettingsBar settings={settings} open={settingsOpen} onOpenChange={setSettingsOpen} onChange={setSettings} />
 
+      <ClientOnly fallback={<div className="min-h-0 flex-1" />}>
       <ResizablePanelGroup
         id="chat2jev-proxy"
         orientation={wide ? "horizontal" : "vertical"}
@@ -266,6 +268,7 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
           </WorkspacePanel>
         </ResizablePanel>
       </ResizablePanelGroup>
+      </ClientOnly>
 
       <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
         <p className="m-0 min-w-0 flex-1 truncate text-sm text-primary-foreground/80">

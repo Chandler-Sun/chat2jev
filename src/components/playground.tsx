@@ -42,6 +42,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ClientOnly } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { blankReplaceableState, pretty } from "@/lib/conversion";
 import { samples } from "@/lib/samples";
@@ -354,6 +355,7 @@ export function Playground() {
     <div className="flex h-full min-h-0 flex-col gap-2">
       <SettingsBar settings={settings} open={settingsOpen} onOpenChange={setSettingsOpen} onChange={setSettings} />
 
+      <ClientOnly fallback={<div className="min-h-0 flex-1" />}>
       <ResizablePanelGroup
         key={wide ? "h" : "v"}
         id="chat2jev-bench"
@@ -603,6 +605,7 @@ export function Playground() {
           </WorkspacePanel>
         </ResizablePanel>
       </ResizablePanelGroup>
+      </ClientOnly>
 
       <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
         <div className="flex min-w-0 flex-1 items-center gap-2">

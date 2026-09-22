@@ -7,6 +7,7 @@ import { JudgmentList, JudgmentRow } from "@/components/judgment-row";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { ClientOnly } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { questionsSchema, type QuestionNote, type SystemOneResponse } from "@/lib/types";
 
@@ -45,6 +46,7 @@ export function ComparePane({
   });
 
   return (
+    <ClientOnly fallback={<div className="min-h-0 flex-1" />}>
     <ResizablePanelGroup
       id="chat2jev-compare"
       orientation={wide ? "horizontal" : "vertical"}
@@ -129,6 +131,7 @@ export function ComparePane({
         </section>
       </ResizablePanel>
     </ResizablePanelGroup>
+    </ClientOnly>
   );
 }
 
