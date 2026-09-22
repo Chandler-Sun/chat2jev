@@ -26,8 +26,12 @@ export function StateEditor({
   const showFields = mode === "fields" && record !== null;
 
   return (
-    <Tabs value={showFields ? mode : "json"} onValueChange={(value) => setMode(value as "fields" | "json")}>
-      <TabsList variant="line">
+    <Tabs
+      value={showFields ? mode : "json"}
+      onValueChange={(value) => setMode(value as "fields" | "json")}
+      className="min-h-0 flex-1"
+    >
+      <TabsList variant="line" className="shrink-0">
         <TabsTrigger value="fields">
           <ListChecksIcon data-icon="inline-start" />
           字段
@@ -37,7 +41,7 @@ export function StateEditor({
           JSON
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="fields" className="flex flex-col gap-3" key={revision}>
+      <TabsContent value="fields" className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto" key={revision}>
         {Object.entries(record ?? {}).map(([key, value]) => (
           <FieldControl
             key={key}
@@ -49,13 +53,13 @@ export function StateEditor({
           />
         ))}
       </TabsContent>
-      <TabsContent value="json" className="flex flex-col gap-2">
+      <TabsContent value="json" className="flex min-h-0 flex-1 flex-col gap-2">
         {!parsed.ok ? <p className="text-sm text-destructive">{parsed.error}</p> : null}
         {parsed.ok && !isRecord(parsed.value) ? (
           <p className="text-sm text-muted-foreground">这份 State 是{Array.isArray(parsed.value) ? "数组" : "一段文本"}，直接在 JSON 里替换。</p>
         ) : null}
         <Textarea
-          className="editor"
+          className="editor fill"
           value={text}
           spellCheck={false}
           aria-label="State JSON"

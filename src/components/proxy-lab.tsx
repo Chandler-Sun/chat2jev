@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ScanSearchIcon, WaypointsIcon } from "lucide-react";
+import { useDefaultLayout } from "react-resizable-panels";
+import { layoutStorage } from "@/lib/layout-storage";
 import { SettingsBar } from "@/components/settings-bar";
+import { WorkspacePanel } from "@/components/workspace-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { pretty } from "@/lib/conversion";
 import { samples } from "@/lib/samples";
 import { defaultSettings, loadWorkbench, saveWorkbench, type Settings } from "@/lib/storage";
@@ -65,6 +69,12 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
     if (typeof window === "undefined") return "/api/v1/chat/completions";
     return `${window.location.origin}/api/v1/chat/completions`;
   }, []);
+  const wide = useMediaQuery("(min-width: 1100px)");
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    storage: layoutStorage,
+    id: `chat2jev.proxy.${wide ? "h" : "v"}`,
+    panelIds: ["request", "routes", "inspect"],
+  });
 
   async function refreshRoutes() {
     const response = await fetch("/api/proxy/routes");
@@ -119,77 +129,69 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <p className="mb-0.5 max-w-[720px] text-muted-foreground">
-        把 OpenAI 兼容的 <strong className="font-semibold text-foreground">/v1/chat/completions</strong> 接到这个代理。命中已登记 slug 或 prompt
-        指纹后，自动拼 State、走 Jev，再还原成标准 Chat Completion。
-      </p>
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <SettingsBar settings={settings} open={settingsOpen} onOpenChange={setSettingsOpen} onChange={setSettings} />
 
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>代理入口</CardTitle>
-          <CardDescription>
-            Base URL 填 <code>{endpoint.replace(/\/v1\/chat\/completions$/, "")}</code>，或直接 POST <code>{endpoint}</code>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <FieldGroup>
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_240px]">
-              <Field>
-                <FieldLabel htmlFor="proxy-slug">强制 slug（可选，对应 x-jev-slug 或 model: jev:slug）</FieldLabel>
-                <Input id="proxy-slug" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="ticket-triage" />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="proxy-mode">未命中时</FieldLabel>
-                <NativeSelect
-                  id="proxy-mode"
-                  className="w-full"
-                  value={mode}
-                  onChange={(event) => setMode(event.target.value as typeof mode)}
-                >
-                  <NativeSelectOption value="auto">只走已登记路由</NativeSelectOption>
-                  <NativeSelectOption value="jev-only">必须走 Jev，否则报错</NativeSelectOption>
-                  <NativeSelectOption value="fallback">未命中则回源常规模型</NativeSelectOption>
-                </NativeSelect>
-              </Field>
-            </div>
-          </FieldGroup>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">示例请求：</span>
-            {samples.map((sample) => (
-              <Button key={sample.id} type="button" variant="outline" size="sm" onClick={() => setSource(sample.source)}>
-                {sample.label}
-              </Button>
-            ))}
-          </div>
-          <Textarea
-            className="editor min-h-45"
-            value={source}
-            spellCheck={false}
-            aria-label="Chat Completions 请求"
-            onChange={(event) => setSource(event.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={busy !== null} onClick={() => preview(false)}>
-              {busy === "inspect" ? <Spinner data-icon="inline-start" /> : <ScanSearchIcon data-icon="inline-start" />}
-              {busy === "inspect" ? "识别中…" : "只识别，不调用"}
-            </Button>
-            <Button type="button" variant="copper" disabled={busy !== null} onClick={() => preview(true)}>
-              {busy === "run" ? <Spinner data-icon="inline-start" /> : <WaypointsIcon data-icon="inline-start" />}
-              {busy === "run" ? "评估中…" : "按代理真实跑一遍"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid items-start gap-3.5 md:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
-        <Card size="sm" className="min-h-[480px] overflow-auto pb-8 md:h-[calc(100vh-410px)] md:max-h-[calc(100vh-410px)]">
-          <CardHeader>
-            <CardTitle>已登记路由</CardTitle>
-            <CardDescription>显式 slug 优先，其次用 system prompt 指纹自动命中。</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <ResizablePanelGroup
+        id="chat2jev-proxy"
+        orientation={wide ? "horizontal" : "vertical"}
+        defaultLayout={defaultLayout}
+        onLayoutChanged={onLayoutChanged}
+        className="min-h-0 flex-1"
+      >
+        <ResizablePanel id="request" defaultSize="34" minSize="18" className="min-h-0 min-w-0">
+          <WorkspacePanel
+            tone="source"
+            title="代理入口"
+            description={
+              <>
+                Base URL 填 <code>{endpoint.replace(/\/v1\/chat\/completions$/, "")}</code>
+              </>
+            }
+            action={
+              <div className="flex flex-wrap justify-end gap-1.5">
+                {samples.map((sample) => (
+                  <Button key={sample.id} type="button" variant="outline" size="sm" onClick={() => setSource(sample.source)}>
+                    {sample.label}
+                  </Button>
+                ))}
+              </div>
+            }
+            contentClassName="gap-2"
+          >
+            <FieldGroup className="shrink-0">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_200px]">
+                <Field>
+                  <FieldLabel htmlFor="proxy-slug">强制 slug</FieldLabel>
+                  <Input id="proxy-slug" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="ticket-triage" />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="proxy-mode">未命中时</FieldLabel>
+                  <NativeSelect
+                    id="proxy-mode"
+                    className="w-full"
+                    value={mode}
+                    onChange={(event) => setMode(event.target.value as typeof mode)}
+                  >
+                    <NativeSelectOption value="auto">只走已登记路由</NativeSelectOption>
+                    <NativeSelectOption value="jev-only">必须走 Jev，否则报错</NativeSelectOption>
+                    <NativeSelectOption value="fallback">未命中则回源常规模型</NativeSelectOption>
+                  </NativeSelect>
+                </Field>
+              </div>
+            </FieldGroup>
+            <Textarea
+              className="editor fill"
+              value={source}
+              spellCheck={false}
+              aria-label="Chat Completions 请求"
+              onChange={(event) => setSource(event.target.value)}
+            />
+          </WorkspacePanel>
+        </ResizablePanel>
+        <ResizableHandle withHandle className="bg-transparent" />
+        <ResizablePanel id="routes" defaultSize="28" minSize="16" className="min-h-0 min-w-0">
+          <WorkspacePanel tone="routes" title="已登记路由" description="显式 slug 优先，其次用 prompt 指纹命中。">
             <div className="j-list">
               {routes.map((route) => (
                 <article className="j-row" key={route.slug} data-open="false">
@@ -201,7 +203,12 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
                     </span>
                   </div>
                   <div className="j-side">
-                    <Badge variant={route.status === "active" ? "secondary" : "outline"}>{route.status}</Badge>
+                    <Badge
+                      variant="outline"
+                      data-tone={route.status === "active" ? "moss" : route.status === "shadow" ? "ochre" : undefined}
+                    >
+                      {route.status}
+                    </Badge>
                     <span className="j-meta">{Object.keys(route.questions).length} questions</span>
                     <ButtonGroup className="mt-2">
                       {(["active", "shadow", "disabled"] as const).map((value) => (
@@ -221,18 +228,19 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
                 </article>
               ))}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card size="sm" className="min-h-[480px] overflow-auto pb-8 md:h-[calc(100vh-410px)] md:max-h-[calc(100vh-410px)]">
-          <CardHeader>
-            <CardTitle>识别与结果</CardTitle>
-            <CardDescription>{inspect ? `${inspect.engine} · ${inspect.via} · ${inspect.fingerprint}` : "还没有预检"}</CardDescription>
-          </CardHeader>
-          <CardContent>
+          </WorkspacePanel>
+        </ResizablePanel>
+        <ResizableHandle withHandle className="bg-transparent" />
+        <ResizablePanel id="inspect" defaultSize="38" minSize="20" className="min-h-0 min-w-0">
+          <WorkspacePanel
+            tone="inspect"
+            title="识别与结果"
+            description={inspect ? `${inspect.engine} · ${inspect.via} · ${inspect.fingerprint}` : "还没有预检"}
+            contentClassName="gap-2"
+          >
             {inspect ? (
-              <div className="flex flex-col gap-3">
-                <pre className="editor short min-h-30 overflow-auto rounded-lg p-3">
+              <>
+                <pre className="editor short min-h-0 flex-1 overflow-auto rounded-lg p-3">
                   {pretty({
                     engine: inspect.engine,
                     via: inspect.via,
@@ -241,11 +249,11 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
                     state: inspect.state,
                   })}
                 </pre>
-                {inspect.answers ? <pre className="editor short min-h-40 overflow-auto rounded-lg p-3">{pretty(inspect.answers)}</pre> : null}
-                {inspect.completion ? <pre className="editor short min-h-40 overflow-auto rounded-lg p-3">{pretty(inspect.completion)}</pre> : null}
-              </div>
+                {inspect.answers ? <pre className="editor short min-h-0 flex-1 overflow-auto rounded-lg p-3">{pretty(inspect.answers)}</pre> : null}
+                {inspect.completion ? <pre className="editor short min-h-0 flex-1 overflow-auto rounded-lg p-3">{pretty(inspect.completion)}</pre> : null}
+              </>
             ) : (
-              <Empty>
+              <Empty className="min-h-0 flex-1 border border-dashed">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <ScanSearchIcon />
@@ -255,18 +263,30 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
                 </EmptyHeader>
               </Empty>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </WorkspacePanel>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
-      <div className="sticky bottom-3 flex items-center justify-between gap-3 rounded-2xl bg-primary px-4 py-2.5 text-primary-foreground">
+      <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
         <p className="m-0 min-w-0 flex-1 truncate text-sm text-primary-foreground/80">
           {error ? <span className="text-warning-foreground">⚠️ {error}</span> : status}
         </p>
-        <Button type="button" variant="copper" disabled={busy !== null} onClick={() => preview(true)}>
-          {busy === "run" ? <Spinner data-icon="inline-start" /> : <WaypointsIcon data-icon="inline-start" />}
-          按代理真实跑一遍
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            disabled={busy !== null}
+            onClick={() => preview(false)}
+          >
+            {busy === "inspect" ? <Spinner data-icon="inline-start" /> : <ScanSearchIcon data-icon="inline-start" />}
+            {busy === "inspect" ? "识别中…" : "只识别"}
+          </Button>
+          <Button type="button" variant="copper" disabled={busy !== null} onClick={() => preview(true)}>
+            {busy === "run" ? <Spinner data-icon="inline-start" /> : <WaypointsIcon data-icon="inline-start" />}
+            {busy === "run" ? "评估中…" : "按代理真实跑一遍"}
+          </Button>
+        </div>
       </div>
     </div>
   );

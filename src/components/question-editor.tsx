@@ -43,8 +43,8 @@ export function QuestionEditor({
   const showJson = mode === "json" || !parsed.ok;
 
   return (
-    <Tabs value={showJson ? "json" : mode} onValueChange={(value) => setMode(value as "cards" | "json")}>
-      <TabsList variant="line">
+    <Tabs value={showJson ? "json" : mode} onValueChange={(value) => setMode(value as "cards" | "json")} className="min-h-0 flex-1">
+      <TabsList variant="line" className="shrink-0">
         <TabsTrigger value="cards">
           <ListIcon data-icon="inline-start" />
           列表
@@ -54,17 +54,17 @@ export function QuestionEditor({
           JSON
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="json" className="flex flex-col gap-2">
+      <TabsContent value="json" className="flex min-h-0 flex-1 flex-col gap-2">
         {!parsed.ok ? <p className="text-sm text-destructive">{parsed.error}</p> : null}
         <Textarea
-          className="editor"
+          className="editor fill"
           value={text}
           spellCheck={false}
           aria-label="Questions JSON"
           onChange={(event) => onTextChange(event.target.value)}
         />
       </TabsContent>
-      <TabsContent value="cards" className="flex flex-col gap-3">
+      <TabsContent value="cards" className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto">
         {parsed.ok ? (
           <>
             <JudgmentList>
@@ -307,6 +307,7 @@ function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
         type="button"
         variant="outline"
         size="sm"
+        data-tone="noul"
         onClick={() => onAdd({ type: "noul", instructions: "这里写一个是否判断，并用 `字段` 指向 State。" })}
       >
         <PlusIcon data-icon="inline-start" />
@@ -316,6 +317,7 @@ function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
         type="button"
         variant="outline"
         size="sm"
+        data-tone="choice"
         onClick={() =>
           onAdd({
             type: "choice",
@@ -331,6 +333,7 @@ function AddQuestion({ onAdd }: { onAdd: (question: Question) => void }) {
         type="button"
         variant="outline"
         size="sm"
+        data-tone="score"
         onClick={() =>
           onAdd({
             type: "score",

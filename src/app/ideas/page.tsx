@@ -7,7 +7,7 @@ import { getTool } from "@/tools/registry";
 export default function IdeasPage() {
   const tool = getTool("ideas");
   return (
-    <Empty className="mx-auto max-w-[720px] border border-dashed py-16">
+    <Empty className="h-full border border-dashed">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <LightbulbIcon />

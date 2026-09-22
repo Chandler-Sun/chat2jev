@@ -31,14 +31,14 @@ export function SettingsBar({
 
   return (
     <Collapsible open={open} onOpenChange={onOpenChange}>
-      <Card size="sm" className="mb-3" aria-label="连接与模型设置">
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
+      <Card size="sm" className="shrink-0 py-2" aria-label="连接与模型设置">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 py-0">
           <div className="flex flex-wrap gap-2">
-            <Badge variant={llmReady ? "secondary" : "outline"}>
+            <Badge variant="outline" data-tone={llmReady ? "ink" : undefined}>
               转换: {settings.llmModel || "未选模型"}
               {hasLlmKey ? " · 已配 Key" : " · 免 Key / 本地"}
             </Badge>
-            <Badge variant={jevReady ? "secondary" : "outline"}>
+            <Badge variant="outline" data-tone={jevReady ? "moss" : undefined}>
               Jev: {settings.typesafeModel || "jev-latest"}
               {jevReady ? " · 已填 Key" : " · 未填 Key"}
             </Badge>
@@ -125,7 +125,7 @@ export function SettingsBar({
                   checked={settings.rememberKeys}
                   onCheckedChange={(checked) => patch({ rememberKeys: checked === true })}
                 />
-                <FieldLabel htmlFor="remember-keys">在这台浏览器本地记住密钥（不上传服务器）</FieldLabel>
+                <FieldLabel htmlFor="remember-keys">在这台浏览器记住密钥（调用时会经服务器转发）</FieldLabel>
               </Field>
             </FieldGroup>
           </CardContent>

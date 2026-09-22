@@ -10,12 +10,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <>
-      <header className="flex h-16 items-center justify-between gap-6 bg-primary px-7 text-primary-foreground max-md:h-auto max-md:flex-col max-md:items-start max-md:px-5 max-md:py-4">
-        <Link href="/" className="flex items-baseline gap-2.5 no-underline">
-          <strong className="font-heading text-[26px] font-medium tracking-tight">Chat2Jev</strong>
+    <div className="flex h-svh flex-col overflow-hidden">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-4 bg-primary px-4 text-primary-foreground max-md:h-auto max-md:flex-wrap max-md:px-3 max-md:py-2">
+        <Link href="/" className="flex items-baseline gap-2 no-underline">
+          <strong className="font-heading text-xl font-medium tracking-tight">Chat2Jev</strong>
         </Link>
-        <nav className="flex flex-wrap gap-1.5" aria-label="工具">
+        <nav className="flex flex-wrap gap-1" aria-label="工具">
           {tools.map((tool) => {
             const active = tool.href === "/" ? pathname === "/" : pathname.startsWith(tool.href);
             const Icon = tool.icon;
@@ -37,7 +37,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </header>
-      <main className="mx-auto w-[min(1440px,calc(100%-40px))] pb-28 pt-[18px] max-md:w-[min(100%-28px,1280px)]">{children}</main>
-    </>
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-2 md:p-3">{children}</main>
+    </div>
   );
 }

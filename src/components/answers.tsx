@@ -9,7 +9,12 @@ const fitLabel = {
 } as const;
 
 export function FitBadge({ fit }: { fit: keyof typeof fitLabel }) {
-  return <Badge variant="secondary">{fitLabel[fit]}</Badge>;
+  const tone = fit === "judgment" ? "moss" : fit === "mixed" ? "ochre" : "ink";
+  return (
+    <Badge variant="outline" data-tone={tone}>
+      {fitLabel[fit]}
+    </Badge>
+  );
 }
 
 export function answerVerdict(answer: Answer | undefined): string {
@@ -54,7 +59,9 @@ export function Answers({ response }: { response: SystemOneResponse }) {
             <article className="rounded-xl border bg-card p-3" key={id}>
               <header className="mb-2 flex items-center justify-between gap-2">
                 <strong>{id}</strong>
-                <Badge variant="outline">{answer.type}</Badge>
+                <Badge variant="outline" data-tone={answer.type}>
+                  {answer.type}
+                </Badge>
               </header>
               <AnswerBody answer={answer} />
             </article>

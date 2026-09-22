@@ -27,7 +27,7 @@ export function JudgmentRow({
   const instruction = instructionOf(question);
 
   return (
-    <article className="j-row" id={`q-${id}`} data-open={open} data-stale={Boolean(matched && stale)}>
+    <article className="j-row" id={`q-${id}`} data-kind={question.type} data-open={open} data-stale={Boolean(matched && stale)}>
       <button type="button" className="j-toggle" aria-expanded={open} onClick={onToggle}>
         <ChevronRightIcon className="j-chevron" />
         <span className="j-copy">

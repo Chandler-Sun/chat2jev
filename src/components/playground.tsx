@@ -13,22 +13,25 @@ import {
   SparklesIcon,
   XIcon,
 } from "lucide-react";
+import { useDefaultLayout } from "react-resizable-panels";
+import { layoutStorage } from "@/lib/layout-storage";
 import { toast } from "sonner";
 import { FitBadge } from "@/components/answers";
 import { ComparePane, type ChatRun } from "@/components/compare-pane";
 import { QuestionEditor } from "@/components/question-editor";
 import { SettingsBar } from "@/components/settings-bar";
 import { StateEditor } from "@/components/state-editor";
+import { WorkspacePanel } from "@/components/workspace-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { blankReplaceableState, pretty } from "@/lib/conversion";
 import { samples } from "@/lib/samples";
 import {
@@ -66,8 +69,8 @@ export function Playground() {
   const [packTitle, setPackTitle] = useState("");
   const [sourceOpen, setSourceOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const resultsRef = useRef<HTMLDivElement>(null);
   const runRef = useRef<() => void>(() => undefined);
+  const wide = useMediaQuery("(min-width: 1100px)");
 
   useEffect(() => {
     const stored = loadWorkbench();
@@ -313,7 +316,6 @@ export function Playground() {
     await Promise.all(tasks);
     setBusy(null);
     setStatus("对比完成。左侧是生成文字，右侧是 Jev 概率。");
-    resultsRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   runRef.current = () => {
@@ -332,137 +334,76 @@ export function Playground() {
   }, []);
 
   const compareLabel = canChat && canJev ? "运行对比" : canChat ? "运行 Chat" : canJev ? "运行 Jev" : "运行对比";
+  const panelIds = [
+    ...(sourceOpen ? (["source"] as const) : []),
+    ...(hasBench ? (["state", "questions"] as const) : []),
+    "results",
+  ];
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    storage: layoutStorage,
+    id: `chat2jev.bench.${wide ? "h" : "v"}.${panelIds.join("-")}`,
+    panelIds,
+  });
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <p className="mb-0.5 max-w-[760px] text-muted-foreground">
-        <strong className="font-semibold text-foreground">Chat2Jev</strong> 对照同一段请求：左边是传统 chat completion 的生成结果，右边是 Jev 的结构化判断。先转换出{" "}
-        <strong className="font-semibold text-foreground">State</strong> 和 <strong className="font-semibold text-foreground">Questions</strong>，再一起跑。
-      </p>
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <SettingsBar settings={settings} open={settingsOpen} onOpenChange={setSettingsOpen} onChange={setSettings} />
 
-      <Collapsible open={sourceOpen} onOpenChange={setSourceOpen}>
-        <Card size="sm">
-          <CardHeader className="flex-row items-center justify-between gap-3">
-            <CollapsibleTrigger render={<button type="button" className="flex flex-col items-start gap-0.5 text-left" />}>
-              <CardTitle className="flex items-center gap-1.5">
-                原始 Chat 请求
-                <ChevronDownIcon className={sourceOpen ? "rotate-180" : undefined} />
-              </CardTitle>
-              <CardDescription>
-                {sourceOpen ? "收起原请求" : source.trim() ? "已载入原请求 · 点击可重新转换" : "导入 OpenAI 兼容请求或 curl"}
-              </CardDescription>
-            </CollapsibleTrigger>
-            <CardAction className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-muted-foreground">示例：</span>
-              {samples.map((sample) => (
-                <Button key={sample.id} type="button" variant="outline" size="sm" onClick={() => loadSample(sample.id)}>
-                  {sample.label}
-                </Button>
-              ))}
-            </CardAction>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="flex flex-col gap-3 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-muted-foreground">这段请求会原样发给传统模型；转换成 Jev 后，换测试数据只改 State。</p>
-                <Button type="button" disabled={busy !== null || !source.trim()} onClick={convert}>
+      <ResizablePanelGroup
+        key={`${wide ? "h" : "v"}-${panelIds.join("-")}`}
+        id="chat2jev-bench"
+        orientation={wide ? "horizontal" : "vertical"}
+        defaultLayout={defaultLayout}
+        onLayoutChanged={onLayoutChanged}
+        className="min-h-0 flex-1"
+      >
+        {sourceOpen ? (
+        <ResizablePanel
+          id="source"
+          defaultSize={hasBench ? "22" : "42"}
+          minSize={wide ? "14" : 140}
+          className="min-h-0 min-w-0"
+        >
+          <WorkspacePanel
+            tone="source"
+            title="原始 Chat 请求"
+            description="发给传统模型的原文。转换成 Jev 后，换测试数据只改 State。"
+            action={
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {samples.map((sample) => (
+                  <Button key={sample.id} type="button" variant="outline" size="sm" onClick={() => loadSample(sample.id)}>
+                    {sample.label}
+                  </Button>
+                ))}
+                <Button type="button" size="sm" disabled={busy !== null || !source.trim()} onClick={convert}>
                   {busy === "convert" ? <Spinner data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
-                  {busy === "convert" ? "正在转换…" : "转换成 Jev"}
+                  {busy === "convert" ? "转换中…" : "转换成 Jev"}
                 </Button>
               </div>
-              <Textarea
-                className="editor source-editor min-h-36"
-                value={source}
-                spellCheck={false}
-                placeholder='粘贴 {"model": "...", "messages": [...]} 或 curl 请求命令…'
-                aria-label="原始请求"
-                onChange={(event) => setSource(event.target.value)}
-              />
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+            }
+            contentClassName="gap-2"
+          >
+            <Textarea
+              className="editor fill"
+              value={source}
+              spellCheck={false}
+              placeholder='粘贴 {"model": "...", "messages": [...]} 或 curl 请求命令…'
+              aria-label="原始请求"
+              onChange={(event) => setSource(event.target.value)}
+            />
+          </WorkspacePanel>
+        </ResizablePanel>
+        ) : null}
+        {sourceOpen ? <ResizableHandle withHandle className="bg-transparent" /> : null}
 
-      {hasBench || canChat ? (
-        hasBench ? (
-        <div className="grid items-start gap-3.5 lg:grid-cols-[minmax(240px,300px)_minmax(260px,0.9fr)_minmax(360px,1.35fr)]">
-          <Card size="sm" className="min-h-[420px] overflow-auto pb-8 lg:h-[calc(100vh-360px)] lg:max-h-[calc(100vh-360px)]">
-            <CardHeader>
-              <CardTitle>State</CardTitle>
-              <CardDescription>Jev 读到的事实。换数据只改这里。</CardDescription>
-              <CardAction>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!conversion || !stateParsed.success}
-                        onClick={blankState}
-                      />
-                    }
-                  >
-                    <EraserIcon data-icon="inline-start" />
-                    清空
-                  </TooltipTrigger>
-                  <TooltipContent>清空可替换字段的值，保留字段结构</TooltipContent>
-                </Tooltip>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {conversion ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <FitBadge fit={conversion.fit} />
-                  <span className="text-sm text-muted-foreground">{conversion.summary}</span>
-                </div>
-              ) : null}
-              {conversion && conversion.warnings.length > 0 ? (
-                <Alert>
-                  <AlertTriangleIcon />
-                  <AlertTitle>转换注意点 ({conversion.warnings.length})</AlertTitle>
-                  <AlertDescription>
-                    {conversion.warnings.map((warning) => (
-                      <p key={warning}>{warning}</p>
-                    ))}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              <StateEditor
-                text={stateText}
-                fields={conversion?.fields ?? []}
-                revision={revision}
-                onTextChange={setStateText}
-              />
-            </CardContent>
-          </Card>
-
-          <Card size="sm" className="min-h-[420px] overflow-auto pb-8 lg:h-[calc(100vh-360px)] lg:max-h-[calc(100vh-360px)]">
-            <CardHeader>
-              <CardTitle>Questions</CardTitle>
-              <CardDescription>可复用的判断维度，对应 TypeSafe playground 中间栏。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <QuestionEditor
-                text={questionsText}
-                notes={conversion?.questionNotes ?? []}
-                onTextChange={setQuestionsText}
-              />
-              <div className="flex flex-col gap-2 border-t pt-3">
-                <div className="flex gap-2">
-                  <Input
-                    value={packTitle}
-                    onChange={(event) => setPackTitle(event.target.value)}
-                    aria-label="问题模板名称"
-                    placeholder="模板名称，如：售后分诊标准版"
-                  />
-                  <Button type="button" variant="outline" onClick={savePack}>
-                    <BookmarkIcon data-icon="inline-start" />
-                    保存
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
+        {hasBench ? (
+          <>
+            <ResizablePanel id="state" defaultSize={sourceOpen ? "20" : "26"} minSize={wide ? "14" : 160} className="min-h-0 min-w-0">
+              <WorkspacePanel
+                tone="state"
+                title="State"
+                description="Jev 读到的事实。换数据只改这里。"
+                action={
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -470,61 +411,129 @@ export function Playground() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={!requestPreview}
-                          onClick={async () => {
-                            await copyText(requestPreview);
-                            setStatus("已复制 TypeSafe System One 请求 JSON。");
-                            setError("");
-                            toast.success("已复制 TypeSafe 请求 JSON");
-                          }}
+                          disabled={!conversion || !stateParsed.success}
+                          onClick={blankState}
                         />
                       }
                     >
-                      <CopyIcon data-icon="inline-start" />
-                      复制 Jev 请求
+                      <EraserIcon data-icon="inline-start" />
+                      清空
                     </TooltipTrigger>
-                    <TooltipContent>复制发往 TypeSafe /v1/systemone 的完整请求</TooltipContent>
+                    <TooltipContent>清空可替换字段的值，保留字段结构</TooltipContent>
                   </Tooltip>
-                  <Button type="button" variant="outline" size="sm" disabled={!conversion} onClick={publishRoute}>
-                    <RouteIcon data-icon="inline-start" />
-                    发布代理
-                  </Button>
-                </div>
-                {packs.length > 0 ? (
+                }
+                contentClassName="gap-2"
+              >
+                {conversion ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">模板：</span>
-                    {packs.map((pack) => (
-                      <span key={pack.id} className="inline-flex items-center overflow-hidden rounded-full border">
-                        <Button type="button" variant="ghost" size="sm" onClick={() => loadPack(pack)}>
-                          {pack.title}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          title="删除此模板"
-                          onClick={() => setPacks((current) => current.filter((item) => item.id !== pack.id))}
-                        >
-                          <XIcon />
-                        </Button>
-                      </span>
-                    ))}
+                    <FitBadge fit={conversion.fit} />
+                    <span className="text-sm text-muted-foreground">{conversion.summary}</span>
                   </div>
                 ) : null}
-              </div>
-            </CardContent>
-          </Card>
+                {conversion && conversion.warnings.length > 0 ? (
+                  <Alert>
+                    <AlertTriangleIcon />
+                    <AlertTitle>转换注意点 ({conversion.warnings.length})</AlertTitle>
+                    <AlertDescription>
+                      {conversion.warnings.map((warning) => (
+                        <p key={warning}>{warning}</p>
+                      ))}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <StateEditor
+                  text={stateText}
+                  fields={conversion?.fields ?? []}
+                  revision={revision}
+                  onTextChange={setStateText}
+                />
+              </WorkspacePanel>
+            </ResizablePanel>
+            <ResizableHandle withHandle className="bg-transparent" />
+            <ResizablePanel id="questions" defaultSize={sourceOpen ? "24" : "30"} minSize={wide ? "16" : 160} className="min-h-0 min-w-0">
+              <WorkspacePanel tone="questions" title="Questions" description="可复用的判断维度。" contentClassName="gap-2">
+                <QuestionEditor
+                  text={questionsText}
+                  notes={conversion?.questionNotes ?? []}
+                  onTextChange={setQuestionsText}
+                />
+                <div className="flex shrink-0 flex-col gap-2 border-t pt-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={packTitle}
+                      onChange={(event) => setPackTitle(event.target.value)}
+                      aria-label="问题模板名称"
+                      placeholder="模板名称，如：售后分诊标准版"
+                    />
+                    <Button type="button" variant="outline" onClick={savePack}>
+                      <BookmarkIcon data-icon="inline-start" />
+                      保存
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!requestPreview}
+                            onClick={async () => {
+                              await copyText(requestPreview);
+                              setStatus("已复制 TypeSafe System One 请求 JSON。");
+                              setError("");
+                              toast.success("已复制 TypeSafe 请求 JSON");
+                            }}
+                          />
+                        }
+                      >
+                        <CopyIcon data-icon="inline-start" />
+                        复制 Jev 请求
+                      </TooltipTrigger>
+                      <TooltipContent>复制发往 TypeSafe /v1/systemone 的完整请求</TooltipContent>
+                    </Tooltip>
+                    <Button type="button" variant="outline" size="sm" disabled={!conversion} onClick={publishRoute}>
+                      <RouteIcon data-icon="inline-start" />
+                      发布代理
+                    </Button>
+                  </div>
+                  {packs.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">模板：</span>
+                      {packs.map((pack) => (
+                        <span key={pack.id} className="inline-flex items-center overflow-hidden rounded-full border">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => loadPack(pack)}>
+                            {pack.title}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            title="删除此模板"
+                            onClick={() => setPacks((current) => current.filter((item) => item.id !== pack.id))}
+                          >
+                            <XIcon />
+                          </Button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </WorkspacePanel>
+            </ResizablePanel>
+            <ResizableHandle withHandle className="bg-transparent" />
+          </>
+        ) : null}
 
-          <Card
-            size="sm"
-            className="min-h-[420px] overflow-auto pb-8 lg:h-[calc(100vh-360px)] lg:max-h-[calc(100vh-360px)]"
-            ref={resultsRef}
+        <ResizablePanel id="results" defaultSize={hasBench ? (sourceOpen ? "34" : "44") : "58"} minSize={wide ? "22" : 180} className="min-h-0 min-w-0">
+          <WorkspacePanel
+            tone="results"
+            title="结果对比"
+            description={hasBench ? "同一输入：Chat 生成文字，Jev 给出带概率的判断。" : "先转换或载入示例，再同时跑 Chat 和 Jev。"}
+            contentClassName="min-h-0"
           >
-            <CardHeader>
-              <CardTitle>结果对比</CardTitle>
-              <CardDescription>同一输入：Chat 生成文字，Jev 给出带概率的判断。</CardDescription>
-            </CardHeader>
-            <CardContent>
+            {hasBench || canChat ? (
               <ComparePane
                 questionsText={questionsText}
                 notes={conversion?.questionNotes ?? []}
@@ -535,50 +544,40 @@ export function Playground() {
                 stale={stale}
                 chatStale={chatStale}
               />
-            </CardContent>
-          </Card>
-        </div>
-        ) : (
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>结果对比</CardTitle>
-              <CardDescription>先跑传统 Chat；转换成 Jev 后，右侧会出现结构化判断。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ComparePane
-                questionsText=""
-                notes={[]}
-                chat={chat}
-                chatError={chatError}
-                jev={null}
-                jevError=""
-                stale={false}
-                chatStale={chatStale}
-              />
-            </CardContent>
-          </Card>
-        )
-      ) : (
-        <Empty className="border border-dashed">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ScaleIcon />
-            </EmptyMedia>
-            <EmptyTitle>还没有可对比的问题</EmptyTitle>
-            <EmptyDescription>载入示例或转换一段 chat completion。然后同时跑传统模型和 Jev。</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+            ) : (
+              <Empty className="min-h-0 flex-1 border border-dashed">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ScaleIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>还没有可对比的问题</EmptyTitle>
+                  <EmptyDescription>在左侧粘贴请求，或载入示例后转换成 Jev。</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </WorkspacePanel>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
-      <div className="sticky bottom-3 flex items-center justify-between gap-3 rounded-2xl bg-primary px-4 py-2.5 text-primary-foreground">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            onClick={() => setSourceOpen((open) => !open)}
+          >
+            <ChevronDownIcon data-icon="inline-start" className={sourceOpen ? "rotate-180" : "-rotate-90"} />
+            {sourceOpen ? "收起原请求" : "原请求"}
+          </Button>
           <p className="m-0 truncate text-sm text-primary-foreground/80">
             {error ? (
               <span className="text-warning-foreground">⚠️ {error}</span>
             ) : stale || chatStale ? (
               <span>输入已改动，当前显示的是上次对比结果</span>
             ) : (
-              status || "⌘ Enter 同时跑 Chat 和 Jev"
+              status || "拖动分栏调节宽度 · ⌘ Enter 同时跑 Chat 和 Jev"
             )}
           </p>
           <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">⌘ Enter</Kbd>
