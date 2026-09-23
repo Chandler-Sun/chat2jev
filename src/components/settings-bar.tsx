@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDownIcon, EyeIcon, EyeOffIcon, Settings2Icon } from "lucide-react";
+import { useI18n } from "@/components/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,6 +24,7 @@ export function SettingsBar({
   onOpenChange: (open: boolean) => void;
   onChange: (settings: Settings) => void;
 }) {
+  const { t } = useI18n();
   const [reveal, setReveal] = useState(false);
   const patch = (partial: Partial<Settings>) => onChange({ ...settings, ...partial });
   const llmReady = settings.llmModel.trim().length > 0;
@@ -31,24 +33,21 @@ export function SettingsBar({
 
   return (
     <Collapsible open={open} onOpenChange={onOpenChange}>
-      <Card size="sm" className="shrink-0 py-2" aria-label="连接与模型设置">
+      <Card size="sm" className="shrink-0 py-2" aria-label={t("settings.aria")}>
         <CardHeader className="flex flex-row items-center justify-between gap-3 py-0">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             <Badge variant="outline" data-tone={llmReady ? "ink" : undefined}>
-              转换: {settings.llmModel || "未选模型"}
-              {hasLlmKey ? " · 已配 Key" : " · 免 Key / 本地"}
+              {t("settings.convert")}: {settings.llmModel || t("settings.noModel")}
+              {hasLlmKey ? ` · ${t("settings.hasKey")}` : ` · ${t("settings.localKey")}`}
             </Badge>
             <Badge variant="outline" data-tone={jevReady ? "moss" : undefined}>
               Jev: {settings.typesafeModel || "jev-latest"}
-              {jevReady ? " · 已填 Key" : " · 未填 Key"}
+              {jevReady ? ` · ${t("settings.hasJevKey")}` : ` · ${t("settings.noJevKey")}`}
             </Badge>
           </div>
-          <CollapsibleTrigger
-            render={<Button variant="outline" size="sm" />}
-            aria-expanded={open}
-          >
+          <CollapsibleTrigger render={<Button variant="outline" size="sm" />} aria-expanded={open}>
             <Settings2Icon data-icon="inline-start" />
-            {open ? "收起设置" : "连接与模型设置"}
+            {open ? t("settings.close") : t("settings.open")}
             <ChevronDownIcon data-icon="inline-end" className={open ? "rotate-180" : undefined} />
           </CollapsibleTrigger>
         </CardHeader>
@@ -57,7 +56,7 @@ export function SettingsBar({
             <FieldGroup>
               <div className="grid gap-3 md:grid-cols-5">
                 <Field>
-                  <FieldLabel htmlFor="llm-base-url">转换模型 API 地址</FieldLabel>
+                  <FieldLabel htmlFor="llm-base-url">{t("settings.llmUrl")}</FieldLabel>
                   <Input
                     id="llm-base-url"
                     value={settings.llmBaseUrl}
@@ -67,7 +66,7 @@ export function SettingsBar({
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="llm-model">转换模型名称</FieldLabel>
+                  <FieldLabel htmlFor="llm-model">{t("settings.llmModel")}</FieldLabel>
                   <Input
                     id="llm-model"
                     value={settings.llmModel}
@@ -75,22 +74,22 @@ export function SettingsBar({
                     placeholder="gpt-4.1-mini"
                     spellCheck={false}
                   />
-                  <FieldDescription>转换和传统 Chat 都用这个名字，不跟原请求里的 model 走。</FieldDescription>
+                  <FieldDescription>{t("settings.llmModelHint")}</FieldDescription>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="llm-key">转换模型 API Key</FieldLabel>
+                  <FieldLabel htmlFor="llm-key">{t("settings.llmKey")}</FieldLabel>
                   <InputGroup>
                     <InputGroupInput
                       id="llm-key"
                       type={reveal ? "text" : "password"}
                       value={settings.llmApiKey}
                       onChange={(event) => patch({ llmApiKey: event.target.value })}
-                      placeholder="本地模型（如 Ollama）可留空"
+                      placeholder={t("settings.llmKeyPlaceholder")}
                       autoComplete="off"
                     />
                     <InputGroupAddon align="inline-end">
                       <InputGroupButton
-                        aria-label={reveal ? "隐藏密钥" : "显示密钥"}
+                        aria-label={reveal ? t("settings.hideKey") : t("settings.showKey")}
                         onClick={() => setReveal((value) => !value)}
                       >
                         {reveal ? <EyeOffIcon /> : <EyeIcon />}
@@ -99,18 +98,18 @@ export function SettingsBar({
                   </InputGroup>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="typesafe-key">TypeSafe API Key</FieldLabel>
+                  <FieldLabel htmlFor="typesafe-key">{t("settings.jevKey")}</FieldLabel>
                   <Input
                     id="typesafe-key"
                     type={reveal ? "text" : "password"}
                     value={settings.typesafeApiKey}
                     onChange={(event) => patch({ typesafeApiKey: event.target.value })}
-                    placeholder="sk-... (必填)"
+                    placeholder={t("settings.jevKeyPlaceholder")}
                     autoComplete="off"
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="jev-model">Jev 模型版本</FieldLabel>
+                  <FieldLabel htmlFor="jev-model">{t("settings.jevModel")}</FieldLabel>
                   <Input
                     id="jev-model"
                     value={settings.typesafeModel}
@@ -126,7 +125,7 @@ export function SettingsBar({
                   checked={settings.rememberKeys}
                   onCheckedChange={(checked) => patch({ rememberKeys: checked === true })}
                 />
-                <FieldLabel htmlFor="remember-keys">在这台浏览器记住密钥（调用时会经服务器转发）</FieldLabel>
+                <FieldLabel htmlFor="remember-keys">{t("settings.remember")}</FieldLabel>
               </Field>
             </FieldGroup>
           </CardContent>

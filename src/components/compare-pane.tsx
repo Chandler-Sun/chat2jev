@@ -5,6 +5,7 @@ import { MessageSquareTextIcon, ScaleIcon } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
 import { layoutStorage } from "@/lib/layout-storage";
 import { JudgmentList, JudgmentRow } from "@/components/judgment-row";
+import { useI18n } from "@/components/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -38,6 +39,7 @@ export function ComparePane({
   stale: boolean;
   chatStale: boolean;
 }) {
+  const { t } = useI18n();
   const questions = parseQuestions(questionsText);
   const wide = useMediaQuery("(min-width: 900px)");
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -56,16 +58,16 @@ export function ComparePane({
       className="min-h-0 flex-1"
     >
       <ResizablePanel id="chat" defaultSize="50" minSize="22" className="min-h-0 min-w-0">
-        <section data-tone="chat" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label="传统 Chat Completion">
+        <section data-tone="chat" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label={t("results.chatAria")}>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline" data-tone="ink">Chat</Badge>
-              <span className="text-sm font-medium">传统生成</span>
+              <span className="text-sm font-medium">{t("results.chatLabel")}</span>
             </div>
             <MetaLine model={chat?.model} tokens={chat?.usage?.completion_tokens} latencyMs={chat?.latencyMs} />
           </div>
           {chatError ? <p className="shrink-0 text-sm text-destructive">{chatError}</p> : null}
-          {chatStale && chat ? <p className="shrink-0 text-xs text-copper">原请求已改，下方是上次 Chat 结果</p> : null}
+          {chatStale && chat ? <p className="shrink-0 text-xs text-copper">{t("results.chatStale")}</p> : null}
           {chat ? (
             <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded-xl border bg-card p-3 font-sans text-sm leading-relaxed">
               {chat.content}
@@ -76,8 +78,8 @@ export function ComparePane({
                 <EmptyMedia variant="icon">
                   <MessageSquareTextIcon />
                 </EmptyMedia>
-                <EmptyTitle>还没有 Chat 结果</EmptyTitle>
-                <EmptyDescription>用原请求跑一遍传统 chat completion，看它生成的文字或 JSON。</EmptyDescription>
+                <EmptyTitle>{t("results.chatEmptyTitle")}</EmptyTitle>
+                <EmptyDescription>{t("results.chatEmptyDesc")}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
@@ -85,16 +87,16 @@ export function ComparePane({
       </ResizablePanel>
       <ResizableHandle withHandle className="bg-transparent" />
       <ResizablePanel id="jev" defaultSize="50" minSize="22" className="min-h-0 min-w-0">
-        <section data-tone="jev" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label="Jev System One">
+        <section data-tone="jev" className="tone-well flex h-full min-h-0 flex-col gap-3 p-3" aria-label={t("results.jevAria")}>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline" data-tone="moss">Jev</Badge>
-              <span className="text-sm font-medium">结构化判断</span>
+              <span className="text-sm font-medium">{t("results.jevLabel")}</span>
             </div>
             <MetaLine model={jev?.model} tokens={jev?.usage?.input_tokens} />
           </div>
           {jevError ? <p className="shrink-0 text-sm text-destructive">{jevError}</p> : null}
-          {stale && jev ? <p className="shrink-0 text-xs text-copper">State 已改，下方是上次 Jev 结果</p> : null}
+          {stale && jev ? <p className="shrink-0 text-xs text-copper">{t("results.jevStale")}</p> : null}
           {questions ? (
             <div className="min-h-0 flex-1 overflow-auto">
               <CompareJudgments questions={questions} notes={notes} jev={jev} stale={stale} />
@@ -105,8 +107,8 @@ export function ComparePane({
                 <EmptyMedia variant="icon">
                   <ScaleIcon />
                 </EmptyMedia>
-                <EmptyTitle>还没有 Jev 结果</EmptyTitle>
-                <EmptyDescription>转换出 Questions 后运行，这里会按 TypeSafe playground 的方式展示概率。</EmptyDescription>
+                <EmptyTitle>{t("results.jevEmptyTitle")}</EmptyTitle>
+                <EmptyDescription>{t("results.jevEmptyDesc")}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           )}
@@ -128,6 +130,7 @@ function CompareJudgments({
   jev: SystemOneResponse | null;
   stale: boolean;
 }) {
+  const { t } = useI18n();
   const ids = Object.keys(questions);
   const idsKey = ids.join("\0");
   const hasJev = Boolean(jev);
@@ -160,7 +163,7 @@ function CompareJudgments({
         >
           {!jev && notes.find((note) => note.id === id)?.purpose ? (
             <p className="j-purpose">
-              <Badge variant="secondary">业务目的</Badge>
+              <Badge variant="secondary">{t("questions.purpose")}</Badge>
               {notes.find((note) => note.id === id)?.purpose}
             </p>
           ) : null}

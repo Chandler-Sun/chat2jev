@@ -1,3 +1,5 @@
+import { pretty } from "./conversion";
+import type { Locale } from "./i18n";
 import type { Conversion, Questions, StateValue } from "./types";
 
 export const ticketSample = `{
@@ -10,6 +12,20 @@ export const ticketSample = `{
     {
       "role": "user",
       "content": "客户来信：我的 Stripe 连接失败三天了，订单一直付不了款，请马上处理。\\n退款政策：因我方集成故障导致的重复扣款可以全额退款。本封来信没有提到重复扣款。"
+    }
+  ]
+}`;
+
+export const ticketSampleEn = `{
+  "model": "gpt-4.1-mini",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a support triage agent. Using the customer message and the refund policy, decide which department should handle it (billing for charges and refunds, technical for outages and integrations, sales for pricing and upgrades), whether the customer is asking for a refund, whether the policy supports a refund, and how upset they are (calm, urgent but polite, strongly dissatisfied). Output JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Customer message: My Stripe connection has been failing for three days, so orders cannot be paid. Please handle this immediately.\\nRefund policy: Duplicate charges caused by our integration failures can be refunded in full. This message does not mention a duplicate charge."
     }
   ]
 }`;
@@ -59,12 +75,17 @@ export const toolsSample = `{
   ]
 }`;
 
-const ticketState: StateValue = {
+const ticketStateZh: StateValue = {
   message: "我的 Stripe 连接失败三天了，订单一直付不了款，请马上处理。",
   refund_policy: "因我方集成故障导致的重复扣款可以全额退款。",
 };
 
-const ticketQuestions: Questions = {
+const ticketStateEn: StateValue = {
+  message: "My Stripe connection has been failing for three days, so orders cannot be paid. Please handle this immediately.",
+  refund_policy: "Duplicate charges caused by our integration failures can be refunded in full.",
+};
+
+const ticketQuestionsZh: Questions = {
   department: {
     type: "choice",
     instructions: "哪个团队应该处理 `message`？",
@@ -98,6 +119,40 @@ const ticketQuestions: Questions = {
   },
 };
 
+const ticketQuestionsEn: Questions = {
+  department: {
+    type: "choice",
+    instructions: "Which team should handle `message`?",
+    criteria: {
+      billing: "Charges, payments, refunds",
+      technical: "Outages, integrations, connection failures",
+      sales: "Pricing, upgrades, new purchases",
+      other: "None of the above",
+    },
+  },
+  refund_requested: {
+    type: "noul",
+    instructions: "Is `message` asking for a refund?",
+    criteria: {
+      true: "An explicit request to get money back",
+      false: "No refund is requested",
+    },
+  },
+  policy_supports_refund: {
+    type: "noul",
+    instructions: "Given `refund_policy`, does it cover the request in `message`?",
+    criteria: {
+      true: "The policy covers this specific case",
+      false: "The policy does not cover it, or the message does not ask for what the policy addresses",
+    },
+  },
+  urgency: {
+    type: "score",
+    instructions: "How urgent or dissatisfied does `message` sound?",
+    criteria: ["Calm statement, no time pressure", "Urgent but still polite", "Strongly dissatisfied, or asking for immediate action"],
+  },
+};
+
 export const ticketConversion: Conversion = {
   title: "客服来信分诊",
   summary: "部门、退款诉求、政策是否覆盖、不满程度，都是对同一封来信的独立判断。",
@@ -105,7 +160,7 @@ export const ticketConversion: Conversion = {
   warnings: [
     "示例转换没有调用模型。Jev 以英文判断最稳，中文样本建议对照置信度再决定是否自动处理。",
   ],
-  state: ticketState,
+  state: ticketStateZh,
   fields: [
     {
       path: "message",
@@ -120,12 +175,43 @@ export const ticketConversion: Conversion = {
       description: "作为证据核对的政策原文，换一条政策时改这里",
     },
   ],
-  questions: ticketQuestions,
+  questions: ticketQuestionsZh,
   questionNotes: [
     { id: "department", purpose: "选择处理队列" },
     { id: "refund_requested", purpose: "决定要不要进入退款分支" },
     { id: "policy_supports_refund", purpose: "核对政策是否覆盖这封来信" },
     { id: "urgency", purpose: "给排序一个可调的程度" },
+  ],
+};
+
+export const ticketConversionEn: Conversion = {
+  title: "Support ticket triage",
+  summary: "Department, refund request, policy coverage, and urgency are independent judgments of the same message.",
+  fit: "judgment",
+  warnings: [
+    "This sample was assembled by hand, not converted by a model.",
+  ],
+  state: ticketStateEn,
+  fields: [
+    {
+      path: "message",
+      label: "Message",
+      replaceable: true,
+      description: "The customer text to replace each time",
+    },
+    {
+      path: "refund_policy",
+      label: "Refund policy",
+      replaceable: true,
+      description: "The policy used as evidence. Change this when you try another policy.",
+    },
+  ],
+  questions: ticketQuestionsEn,
+  questionNotes: [
+    { id: "department", purpose: "Pick the handling queue" },
+    { id: "refund_requested", purpose: "Decide whether to enter the refund path" },
+    { id: "policy_supports_refund", purpose: "Check whether the policy covers this message" },
+    { id: "urgency", purpose: "A tunable score for ordering" },
   ],
 };
 
@@ -188,19 +274,69 @@ export const toolsConversion: Conversion = {
   ],
 };
 
-export const samples = [
-  {
-    id: "ticket",
-    label: "客服分诊",
-    source: ticketSample,
-    preview: ticketConversion,
-  },
-  {
-    id: "tools",
-    label: "工具路由",
-    source: toolsSample,
-    preview: toolsConversion,
-  },
-] as const;
+export const toolsConversionEn: Conversion = {
+  title: "Trade instruction routing",
+  summary: "The function name and closed parameters become judgments. Open strings are left for code to extract first.",
+  fit: "mixed",
+  warnings: [
+    "symbol and quantity are open strings. Jev will not generate them. Extract candidates in code, then pick with Choice.",
+    "side and order_type are speculative: if this utterance is not an order, ignore those answers.",
+  ],
+  state: toolsState,
+  fields: [
+    {
+      path: "utterance",
+      label: "Instruction",
+      replaceable: true,
+      description: "The natural-language command to replace each time",
+    },
+  ],
+  questions: toolsQuestions,
+  questionNotes: [
+    { id: "tool", purpose: "Pick the function to call" },
+    { id: "side", purpose: "Read only for place_order" },
+    { id: "order_type", purpose: "Read only for place_order" },
+  ],
+};
 
-export type SampleId = (typeof samples)[number]["id"];
+export const sampleIds = ["ticket", "tools"] as const;
+export type SampleId = (typeof sampleIds)[number];
+
+export type Sample = {
+  id: SampleId;
+  source: string;
+  preview: Conversion;
+};
+
+export const samplesByLocale: Record<Locale, readonly Sample[]> = {
+  zh: [
+    { id: "ticket", source: ticketSample, preview: ticketConversion },
+    { id: "tools", source: toolsSample, preview: toolsConversion },
+  ],
+  en: [
+    { id: "ticket", source: ticketSampleEn, preview: ticketConversionEn },
+    { id: "tools", source: toolsSample, preview: toolsConversionEn },
+  ],
+};
+
+export const samples = samplesByLocale.zh;
+
+export function samplesFor(locale: Locale): readonly Sample[] {
+  return samplesByLocale[locale];
+}
+
+export function sampleById(locale: Locale, id: string): Sample | undefined {
+  return samplesFor(locale).find((sample) => sample.id === id);
+}
+
+export function findSampleId(source: string, stateText?: string, questionsText?: string): SampleId | null {
+  for (const locale of Object.keys(samplesByLocale) as Locale[]) {
+    for (const sample of samplesByLocale[locale]) {
+      if (sample.source !== source) continue;
+      if (stateText !== undefined && pretty(sample.preview.state) !== stateText) continue;
+      if (questionsText !== undefined && pretty(sample.preview.questions) !== questionsText) continue;
+      return sample.id;
+    }
+  }
+  return null;
+}

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { FieldNote } from "@/lib/types";
+import { useI18n } from "@/components/locale-provider";
 import { pretty } from "@/lib/conversion";
 
 export function StateEditor({
@@ -21,8 +22,9 @@ export function StateEditor({
   revision: number;
   onTextChange: (text: string) => void;
 }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<"fields" | "json">("fields");
-  const parsed = useMemo(() => parseLoose(text), [text]);
+  const parsed = useMemo(() => parseLoose(text, t("state.badJson")), [text, t]);
   const record = parsed.ok && isRecord(parsed.value) ? parsed.value : null;
   const showFields = mode === "fields" && record !== null;
 
@@ -35,11 +37,11 @@ export function StateEditor({
       <TabsList variant="line" className="shrink-0">
         <TabsTrigger value="fields">
           <ListChecksIcon data-icon="inline-start" />
-          字段
+          {t("state.fields")}
         </TabsTrigger>
         <TabsTrigger value="json">
           <BracesIcon data-icon="inline-start" />
-          JSON
+          {t("state.json")}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="fields" className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-auto" key={revision}>
@@ -57,7 +59,9 @@ export function StateEditor({
       <TabsContent value="json" className="flex min-h-0 flex-1 flex-col gap-2">
         {!parsed.ok ? <p className="text-sm text-destructive">{parsed.error}</p> : null}
         {parsed.ok && !isRecord(parsed.value) ? (
-          <p className="text-sm text-muted-foreground">这份 State 是{Array.isArray(parsed.value) ? "数组" : "一段文本"}，直接在 JSON 里替换。</p>
+          <p className="text-sm text-muted-foreground">
+            {t("state.notObject", { kind: Array.isArray(parsed.value) ? t("state.array") : t("state.text") })}
+          </p>
         ) : null}
         <Textarea
           className="editor fill"
@@ -84,6 +88,7 @@ function FieldControl({
   replaceable?: boolean;
   onChange: (value: unknown) => void;
 }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState<string | null>(null);
   const isString = typeof value === "string";
   const shown = draft ?? (isString ? value : JSON.stringify(value, null, 2));
@@ -110,7 +115,7 @@ function FieldControl({
           {name}
         </FieldLabel>
         <Badge className="shrink-0" variant={replaceable ? "secondary" : "outline"}>
-          {replaceable ? "待测字段" : "固定上下文"}
+          {replaceable ? t("state.replaceable") : t("state.fixed")}
         </Badge>
       </div>
       {compact ? (
@@ -129,16 +134,16 @@ function FieldControl({
           {note}
         </FieldDescription>
       ) : null}
-      {draft ? <p className="text-sm text-destructive">这段 JSON 还没写完</p> : null}
+      {draft ? <p className="text-sm text-destructive">{t("state.jsonDraft")}</p> : null}
     </Field>
   );
 }
 
-function parseLoose(text: string): { ok: true; value: unknown } | { ok: false; error: string } {
+function parseLoose(text: string, error: string): { ok: true; value: unknown } | { ok: false; error: string } {
   try {
     return { ok: true, value: JSON.parse(text) as unknown };
   } catch {
-    return { ok: false, error: "State 的 JSON 无法解析" };
+    return { ok: false, error };
   }
 }
 

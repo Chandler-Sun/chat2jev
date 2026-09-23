@@ -30,7 +30,7 @@ export function WorkspacePanel({
           {tone ? <span className="tone-dot" aria-hidden="true" /> : null}
           {title}
         </CardTitle>
-        {description && !hideContent ? <CardDescription className="truncate">{description}</CardDescription> : null}
+        {description && !hideContent ? <CardDescription className="panel-desc">{description}</CardDescription> : null}
         {action ? <CardAction>{action}</CardAction> : null}
       </CardHeader>
       {hideContent ? null : (

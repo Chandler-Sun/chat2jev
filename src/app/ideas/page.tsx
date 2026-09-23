@@ -1,24 +1,28 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeftIcon, LightbulbIcon } from "lucide-react";
+import { useI18n } from "@/components/locale-provider";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { getTool } from "@/tools/registry";
 
 export default function IdeasPage() {
-  const tool = getTool("ideas");
+  const { t } = useI18n();
   return (
     <Empty className="h-full border border-dashed">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <LightbulbIcon />
         </EmptyMedia>
-        <EmptyTitle>{tool?.label ?? "Idea 广场"}</EmptyTitle>
-        <EmptyDescription>{tool?.description} Chat2Jev 对比已经可以单独使用。</EmptyDescription>
+        <EmptyTitle>{t("nav.ideas")}</EmptyTitle>
+        <EmptyDescription>
+          {t("ideas.desc")} {t("ideas.extra")}
+        </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <Link href="/" className={buttonVariants()}>
           <ArrowLeftIcon data-icon="inline-start" />
-          回到 Chat2Jev
+          {t("ideas.back")}
         </Link>
       </EmptyContent>
     </Empty>

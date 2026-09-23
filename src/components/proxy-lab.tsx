@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ScanSearchIcon, WaypointsIcon } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
 import { layoutStorage } from "@/lib/layout-storage";
+import { useI18n } from "@/components/locale-provider";
 import { SettingsBar } from "@/components/settings-bar";
 import { WorkspacePanel } from "@/components/workspace-panel";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientOnly } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { pretty } from "@/lib/conversion";
-import { samples } from "@/lib/samples";
+import { findSampleId, sampleById, samplesFor } from "@/lib/samples";
 import { defaultSettings, loadWorkbench, saveWorkbench, type Settings } from "@/lib/storage";
+import type { MessageKey } from "@/lib/i18n";
 import type { JevRoute } from "@/lib/proxy/types";
 
 type InspectResult = {
@@ -35,16 +37,18 @@ type InspectResult = {
 };
 
 export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] }) {
+  const { locale, t } = useI18n();
+  const localeSamples = samplesFor(locale);
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [source, setSource] = useState<string>(samples[0].source);
+  const [source, setSource] = useState<string>(samplesFor("zh")[0].source);
   const [slug, setSlug] = useState("");
   const [mode, setMode] = useState<"auto" | "jev-only" | "fallback">("auto");
   const [routes, setRoutes] = useState<JevRoute[]>(initialRoutes);
   const [inspect, setInspect] = useState<InspectResult | null>(null);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("粘贴一段 chat completions 请求，看它会不会命中已登记的 Jev 路由。");
+  const [status, setStatus] = useState("");
   const [busy, setBusy] = useState<"inspect" | "run" | null>(null);
 
   useEffect(() => {
@@ -52,7 +56,7 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
     if (stored) setSettings(stored.settings);
     setReady(true);
     void refreshRoutes().catch((caught) => {
-      setError(caught instanceof Error ? caught.message : "载入路由表失败");
+      setError(caught instanceof Error ? caught.message : t("proxy.loadFail"));
     });
   }, []);
 
@@ -65,6 +69,15 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
       draft: stored?.draft ?? { source: "", stateText: "", questionsText: "", conversion: null },
     });
   }, [ready, settings]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const id = findSampleId(source);
+    if (!id) return;
+    const localized = sampleById(locale, id);
+    if (!localized || localized.source === source) return;
+    setSource(localized.source);
+  }, [ready, locale, source]);
 
   const endpoint = useMemo(() => {
     if (typeof window === "undefined") return "/api/v1/chat/completions";
@@ -80,7 +93,7 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
   async function refreshRoutes() {
     const response = await fetch("/api/proxy/routes");
     const payload = (await response.json()) as { routes?: JevRoute[]; error?: string };
-    if (!response.ok) throw new Error(payload.error || "载入路由表失败");
+    if (!response.ok) throw new Error(payload.error || t("proxy.loadFail"));
     setRoutes(payload.routes ?? []);
   }
 
@@ -106,15 +119,15 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
         body: JSON.stringify({ source, run }),
       });
       const payload = (await response.json()) as InspectResult & { error?: string };
-      if (!response.ok) throw new Error(payload.error || `预检失败（${response.status}）`);
+      if (!response.ok) throw new Error(payload.error || t("proxy.inspectFailStatus", { status: response.status }));
       setInspect(payload);
       setStatus(
         payload.route
-          ? `命中 ${payload.route.slug}（${payload.via}）· 引擎 ${payload.engine}`
-          : `未命中。fingerprint ${payload.fingerprint}`,
+          ? t("proxy.hit", { slug: payload.route.slug, via: payload.via, engine: payload.engine })
+          : t("proxy.miss", { fingerprint: payload.fingerprint }),
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "预检失败");
+      setError(caught instanceof Error ? caught.message : t("proxy.inspectFail"));
     } finally {
       setBusy(null);
     }
@@ -144,17 +157,17 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
         <ResizablePanel id="request" defaultSize="34" minSize="18" className="min-h-0 min-w-0">
           <WorkspacePanel
             tone="source"
-            title="代理入口"
+            title={t("proxy.entry")}
             description={
               <>
-                Base URL 填 <code>{endpoint.replace(/\/v1\/chat\/completions$/, "")}</code>
+                {t("proxy.baseHint")} <code>{endpoint.replace(/\/v1\/chat\/completions$/, "")}</code>
               </>
             }
             action={
               <div className="flex flex-wrap justify-end gap-1.5">
-                {samples.map((sample) => (
+                {localeSamples.map((sample) => (
                   <Button key={sample.id} type="button" variant="outline" size="sm" onClick={() => setSource(sample.source)}>
-                    {sample.label}
+                    {t(`sample.${sample.id}`)}
                   </Button>
                 ))}
               </div>
@@ -162,22 +175,22 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
             contentClassName="gap-2"
           >
             <FieldGroup className="shrink-0">
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_200px]">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="proxy-slug">强制 slug</FieldLabel>
+                  <FieldLabel htmlFor="proxy-slug">{t("proxy.slug")}</FieldLabel>
                   <Input id="proxy-slug" value={slug} onChange={(event) => setSlug(event.target.value)} placeholder="ticket-triage" />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="proxy-mode">未命中时</FieldLabel>
+                  <FieldLabel htmlFor="proxy-mode">{t("proxy.missMode")}</FieldLabel>
                   <NativeSelect
                     id="proxy-mode"
                     className="w-full"
                     value={mode}
                     onChange={(event) => setMode(event.target.value as typeof mode)}
                   >
-                    <NativeSelectOption value="auto">只走已登记路由</NativeSelectOption>
-                    <NativeSelectOption value="jev-only">必须走 Jev，否则报错</NativeSelectOption>
-                    <NativeSelectOption value="fallback">未命中则回源常规模型</NativeSelectOption>
+                    <NativeSelectOption value="auto">{t("proxy.modeAuto")}</NativeSelectOption>
+                    <NativeSelectOption value="jev-only">{t("proxy.modeJev")}</NativeSelectOption>
+                    <NativeSelectOption value="fallback">{t("proxy.modeFallback")}</NativeSelectOption>
                   </NativeSelect>
                 </Field>
               </div>
@@ -186,22 +199,26 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
               className="editor fill"
               value={source}
               spellCheck={false}
-              aria-label="Chat Completions 请求"
+              aria-label={t("proxy.chatAria")}
               onChange={(event) => setSource(event.target.value)}
             />
           </WorkspacePanel>
         </ResizablePanel>
         <ResizableHandle withHandle className="bg-transparent" />
         <ResizablePanel id="routes" defaultSize="28" minSize="16" className="min-h-0 min-w-0">
-          <WorkspacePanel tone="routes" title="已登记路由" description="显式 slug 优先，其次用 prompt 指纹命中。">
+          <WorkspacePanel tone="routes" title={t("proxy.routes")} description={t("proxy.routesDesc")}>
             <div className="j-list">
               {routes.map((route) => (
                 <article className="j-row" key={route.slug} data-open="false">
                   <div className="j-copy">
                     <strong className="j-id">{route.slug}</strong>
                     <span className="j-instruction">
-                      {route.title} · {route.fit} · fingerprint {route.fingerprint ?? "未绑定"}
-                      {route.builtin ? " · 内置" : ""}
+                      {t("proxy.routeLine", {
+                        title: route.title,
+                        fit: fitLabel(route.fit, t),
+                        fingerprint: route.fingerprint ?? t("proxy.unbound"),
+                      })}
+                      {route.builtin ? t("proxy.builtinSuffix") : ""}
                     </span>
                   </div>
                   <div className="j-side">
@@ -236,8 +253,8 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
         <ResizablePanel id="inspect" defaultSize="38" minSize="20" className="min-h-0 min-w-0">
           <WorkspacePanel
             tone="inspect"
-            title="识别与结果"
-            description={inspect ? `${inspect.engine} · ${inspect.via} · ${inspect.fingerprint}` : "还没有预检"}
+            title={t("proxy.inspect")}
+            description={inspect ? `${inspect.engine} · ${inspect.via} · ${inspect.fingerprint}` : t("proxy.noInspect")}
             contentClassName="gap-2"
           >
             {inspect ? (
@@ -260,8 +277,8 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
                   <EmptyMedia variant="icon">
                     <ScanSearchIcon />
                   </EmptyMedia>
-                  <EmptyTitle>还没有预检</EmptyTitle>
-                  <EmptyDescription>先识别。命中后会看到拼好的 State；真实跑一遍才会出现 Jev 答案和还原后的 OpenAI 响应。</EmptyDescription>
+                  <EmptyTitle>{t("proxy.emptyTitle")}</EmptyTitle>
+                  <EmptyDescription>{t("proxy.emptyDesc")}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}
@@ -270,11 +287,11 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
       </ResizablePanelGroup>
       </ClientOnly>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
+      <div className="workbench-dock rounded-xl bg-primary px-3 py-2 text-primary-foreground">
         <p className="m-0 min-w-0 flex-1 truncate text-sm text-primary-foreground/80">
-          {error ? <span className="text-warning-foreground">⚠️ {error}</span> : status}
+          {error ? <span className="text-warning-foreground">⚠️ {error}</span> : status || t("proxy.hint")}
         </p>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -283,14 +300,19 @@ export function ProxyLab({ initialRoutes = [] }: { initialRoutes?: JevRoute[] })
             onClick={() => preview(false)}
           >
             {busy === "inspect" ? <Spinner data-icon="inline-start" /> : <ScanSearchIcon data-icon="inline-start" />}
-            {busy === "inspect" ? "识别中…" : "只识别"}
+            {busy === "inspect" ? t("proxy.inspecting") : t("proxy.inspectOnly")}
           </Button>
           <Button type="button" variant="copper" disabled={busy !== null} onClick={() => preview(true)}>
             {busy === "run" ? <Spinner data-icon="inline-start" /> : <WaypointsIcon data-icon="inline-start" />}
-            {busy === "run" ? "评估中…" : "按代理真实跑一遍"}
+            {busy === "run" ? t("proxy.running") : t("proxy.run")}
           </Button>
         </div>
       </div>
     </div>
   );
+}
+
+function fitLabel(fit: string, t: (key: MessageKey) => string) {
+  if (fit === "judgment" || fit === "mixed" || fit === "generative") return t(`fit.${fit}`);
+  return fit;
 }

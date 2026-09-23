@@ -4,7 +4,7 @@ import { blankReplaceableState, finalizeConversion, parseModelJson } from "./con
 import { chatCompletionsUrl, HttpError } from "./http";
 import { buildChatForwardBody } from "./chat-forward";
 import { extractRequestPayload, normalizeRequest } from "./openai-request";
-import { samples } from "./samples";
+import { samples, samplesByLocale } from "./samples";
 import { conversionSchema } from "./types";
 
 test("chat completions url keeps an existing v1 prefix", () => {
@@ -55,10 +55,12 @@ test("image parts are skipped with a note", () => {
 });
 
 test("sample conversions match the question schema", () => {
-  for (const sample of samples) {
-    const parsed = conversionSchema.safeParse(sample.preview);
-    assert.equal(parsed.success, true, parsed.success ? "" : parsed.error.message);
-    assert.doesNotThrow(() => JSON.parse(sample.source));
+  for (const localeSamples of Object.values(samplesByLocale)) {
+    for (const sample of localeSamples) {
+      const parsed = conversionSchema.safeParse(sample.preview);
+      assert.equal(parsed.success, true, parsed.success ? "" : parsed.error.message);
+      assert.doesNotThrow(() => JSON.parse(sample.source));
+    }
   }
 });
 

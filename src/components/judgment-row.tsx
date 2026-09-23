@@ -1,6 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
+import { useI18n } from "@/components/locale-provider";
+import type { MessageKey } from "@/lib/i18n";
 import type { Answer, ChoiceAnswer, Question } from "@/lib/types";
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 export function JudgmentList({ children }: { children: ReactNode }) {
   return <div className="j-list">{children}</div>;
@@ -23,6 +29,7 @@ export function JudgmentRow({
   onToggle: () => void;
   children?: ReactNode;
 }) {
+  const { t } = useI18n();
   const matched = answer && answer.type === question.type ? answer : undefined;
   const instruction = instructionOf(question);
 
@@ -33,7 +40,7 @@ export function JudgmentRow({
           <ChevronRightIcon className="j-chevron" />
           <span className="j-copy">
             <strong className="j-id">{id}</strong>
-            <span className="j-instruction">{instruction || "这条指令是结构化的，展开后在 JSON 里改。"}</span>
+            <span className="j-instruction">{instruction || t("judge.structured")}</span>
           </span>
         </span>
         <Side question={question} answer={matched} stale={stale} />
@@ -49,9 +56,10 @@ export function JudgmentRow({
 }
 
 function Side({ question, answer, stale }: { question: Question; answer?: Answer; stale: boolean }) {
-  const meta = metaLine(question, Boolean(answer));
+  const { t } = useI18n();
+  const meta = metaLine(question, Boolean(answer), t);
   const bar = barValue(question, answer);
-  const title = headline(question, answer);
+  const title = headline(question, answer, t);
   const alts = answer?.type === "choice" ? runnersUp(answer) : [];
 
   return (
@@ -64,23 +72,25 @@ function Side({ question, answer, stale }: { question: Question; answer?: Answer
       ))}
       {answer && answer.type !== "noul" ? (
         <span className="j-confidence">
-          Confidence: {Math.round(answer.confidence * 100)}%{stale ? " · 上次" : ""}
+          {t("judge.confidence", { n: Math.round(answer.confidence * 100) })}
+          {stale ? ` · ${t("judge.last")}` : ""}
         </span>
       ) : stale && answer ? (
-        <span className="j-confidence">上次</span>
+        <span className="j-confidence">{t("judge.last")}</span>
       ) : null}
       {bar === null ? null : (
         <div className="j-track" aria-hidden="true">
           <span style={{ width: `${Math.round(bar * 100)}%` }} />
         </div>
       )}
-      <span className="j-type">{typeLabel(question.type)}</span>
+      <span className="j-type">{typeLabel(question.type, t)}</span>
       {meta ? <span className="j-meta">{meta}</span> : null}
     </div>
   );
 }
 
 function CriteriaView({ question, answer }: { question: Question; answer?: Answer }) {
+  const { t } = useI18n();
   if (question.type === "choice") {
     const probabilities = answer?.type === "choice" ? answer.probabilities : undefined;
     const winner = answer?.type === "choice" ? answer.choice : undefined;
@@ -108,7 +118,7 @@ function CriteriaView({ question, answer }: { question: Question; answer?: Answe
           <Level
             key={index}
             index={String(index)}
-            name={describe(level) || `等级 ${index}`}
+            name={describe(level) || t("judge.level", { index })}
             percent={percentOf(probabilities?.[String(index)])}
             selected={picked === index}
           />
@@ -161,30 +171,29 @@ function Level({
   );
 }
 
-function headline(question: Question, answer?: Answer): string {
+function headline(question: Question, answer: Answer | undefined, t: Translate): string {
   if (question.type === "score") {
     const max = Math.max(question.criteria.length - 1, 0);
-    if (answer?.type !== "score") return `0–${max}`;
-    return `${formatScore(answer.score)} of ${max}`;
+    if (answer?.type !== "score") return t("judge.scoreRange", { max });
+    return t("judge.scoreOf", { score: formatScore(answer.score), max });
   }
   if (question.type === "noul") {
     if (answer?.type !== "noul") return "yes / no";
-    return `${Math.round(answer.noul * 100)}% true`;
+    return t("judge.percentTrue", { n: Math.round(answer.noul * 100) });
   }
   if (answer?.type !== "choice") return "";
   return answer.choice || "—";
 }
 
-function metaLine(question: Question, hasAnswer: boolean): string {
+function metaLine(question: Question, hasAnswer: boolean, t: Translate): string {
   if (question.type === "score") {
     const count = question.criteria.length;
-    return `${count} 级刻度 · 0–${Math.max(count - 1, 0)}`;
+    return t("judge.scoreScale", { count, max: Math.max(count - 1, 0) });
   }
   if (question.type === "choice") {
-    const count = Object.keys(question.criteria).length;
-    return `${count} 个候选选项`;
+    return t("judge.choices", { count: Object.keys(question.criteria).length });
   }
-  return hasAnswer ? "是非判断" : "概率 0–100%";
+  return hasAnswer ? t("judge.yesNo") : t("judge.prob");
 }
 
 function barValue(question: Question, answer?: Answer): number | null {
@@ -214,10 +223,10 @@ function formatScore(score: number): string {
   return Number.isInteger(score) ? String(score) : score.toFixed(2);
 }
 
-function typeLabel(type: Question["type"]): string {
-  if (type === "noul") return "Noul (是非)";
-  if (type === "choice") return "Choice (单选)";
-  return "Score (打分)";
+function typeLabel(type: Question["type"], t: Translate): string {
+  if (type === "noul") return t("judge.noul");
+  if (type === "choice") return t("judge.choice");
+  return t("judge.score");
 }
 
 function instructionOf(question: Question): string {

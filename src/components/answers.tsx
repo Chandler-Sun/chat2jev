@@ -1,24 +1,29 @@
+"use client";
+
 import type { Answer, SystemOneResponse } from "@/lib/types";
+import { useI18n } from "@/components/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MessageKey } from "@/lib/i18n";
 
-const fitLabel = {
-  judgment: "可直接判断",
-  mixed: "部分判断",
-  generative: "原本在生成文字",
-} as const;
+const fitKey = {
+  judgment: "fit.judgment",
+  mixed: "fit.mixed",
+  generative: "fit.generative",
+} as const satisfies Record<string, MessageKey>;
 
-export function FitBadge({ fit }: { fit: keyof typeof fitLabel }) {
+export function FitBadge({ fit }: { fit: keyof typeof fitKey }) {
+  const { t } = useI18n();
   const tone = fit === "judgment" ? "moss" : fit === "mixed" ? "ochre" : "ink";
   return (
     <Badge variant="outline" data-tone={tone}>
-      {fitLabel[fit]}
+      {t(fitKey[fit])}
     </Badge>
   );
 }
 
-export function answerVerdict(answer: Answer | undefined): string {
-  if (!answer) return "未运行";
+export function answerVerdict(answer: Answer | undefined, notRun = "—"): string {
+  if (!answer) return notRun;
   if (answer.type === "noul" && typeof answer.noul === "number") return answer.noul.toFixed(2);
   if (answer.type === "choice") return answer.choice || "—";
   if (answer.type === "score" && typeof answer.score === "number") return answer.score.toFixed(2);
@@ -26,11 +31,12 @@ export function answerVerdict(answer: Answer | undefined): string {
 }
 
 export function AnswerReadout({ answer, stale = false }: { answer: Answer; stale?: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="mt-2.5" data-stale={stale}>
       <div className="flex items-baseline gap-2">
-        <strong className="font-heading text-[28px] font-medium tracking-tight">{answerVerdict(answer)}</strong>
-        {stale ? <span className="text-xs text-copper">上次</span> : null}
+        <strong className="font-heading text-[28px] font-medium tracking-tight">{answerVerdict(answer, t("judge.notRun"))}</strong>
+        {stale ? <span className="text-xs text-copper">{t("judge.last")}</span> : null}
         {answer.type !== "noul" && typeof answer.confidence === "number" ? (
           <span className="text-sm text-muted-foreground">confidence {answer.confidence.toFixed(2)}</span>
         ) : null}
@@ -41,19 +47,20 @@ export function AnswerReadout({ answer, stale = false }: { answer: Answer; stale
 }
 
 export function Answers({ response }: { response: SystemOneResponse }) {
+  const { t } = useI18n();
   const entries = Object.entries(response.answers ?? {});
 
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle>Jev 的回答</CardTitle>
+        <CardTitle>{t("answers.title")}</CardTitle>
         <CardDescription>
-          {response.model ? `实际模型 ${response.model}` : "已返回"}
-          {response.usage?.input_tokens !== undefined ? ` · 输入 ${response.usage.input_tokens} tokens` : ""}
+          {response.model ? t("answers.model", { model: response.model }) : t("answers.returned")}
+          {response.usage?.input_tokens !== undefined ? t("answers.tokens", { tokens: response.usage.input_tokens }) : ""}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {entries.length === 0 ? <p className="text-sm text-muted-foreground">响应里没有 answers。</p> : null}
+        {entries.length === 0 ? <p className="text-sm text-muted-foreground">{t("answers.none")}</p> : null}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {entries.map(([id, answer]) => (
             <article className="rounded-xl border bg-card p-3" key={id}>
@@ -73,11 +80,12 @@ export function Answers({ response }: { response: SystemOneResponse }) {
 }
 
 function AnswerBody({ answer, compact = false }: { answer: Answer; compact?: boolean }) {
+  const { t } = useI18n();
   if (answer.type === "noul") {
     return (
       <>
         {compact ? null : <div className="font-heading text-4xl tracking-tight">{answer.noul.toFixed(2)}</div>}
-        <Meter label="yes 的概率" value={answer.noul} />
+        <Meter label={t("answers.yesProb")} value={answer.noul} />
       </>
     );
   }

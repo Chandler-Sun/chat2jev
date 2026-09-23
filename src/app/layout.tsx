@@ -23,7 +23,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Chat2Jev",
-  description: "对照传统 chat completion 与 TypeSafe Jev System One 判断结果",
+  description: "Compare classic chat completion with TypeSafe Jev System One · 对照传统 Chat 与 Jev 判断",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

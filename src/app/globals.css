@@ -189,6 +189,18 @@
     @apply bg-background text-foreground h-full overflow-hidden text-base leading-normal;
     font-family: var(--font-source), "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
   }
+
+  html[lang="en"] body {
+    font-family: var(--font-source), ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    letter-spacing: -0.011em;
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+
+  html[lang="en"] .font-heading {
+    letter-spacing: -0.03em;
+  }
 }
 
 [data-tone] {
@@ -595,4 +607,109 @@
     padding-left: 24px;
     text-align: left;
   }
+}
+
+.panel-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locale-toggle {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary-foreground) 22%, transparent);
+  border-radius: 999px;
+}
+
+.locale-toggle-btn {
+  height: 26px;
+  padding: 0 9px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--primary-foreground) 78%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.locale-toggle-btn.is-active {
+  background: color-mix(in srgb, var(--primary-foreground) 16%, transparent);
+  color: var(--primary-foreground);
+}
+
+.workbench-dock {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+html[lang="en"] .panel-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+html[lang="en"] header .font-heading {
+  font-size: 1.15rem;
+}
+
+html[lang="en"] [data-slot="card-title"] {
+  font-size: 0.98rem;
+  letter-spacing: -0.02em;
+}
+
+html[lang="en"] [data-slot="button"] {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+html[lang="en"] [data-slot="badge"],
+html[lang="en"] [data-slot="field-label"] {
+  font-size: 12px;
+  letter-spacing: -0.005em;
+}
+
+html[lang="en"] .j-instruction {
+  -webkit-line-clamp: 3;
+  line-height: 1.4;
+}
+
+html[lang="en"] .j-id,
+html[lang="en"] .j-value {
+  letter-spacing: -0.025em;
+}
+
+html[lang="en"] .workbench-dock {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+html[lang="en"] .workbench-dock button {
+  font-size: 12.5px;
+}
+
+html[lang="en"] header nav a {
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+html[lang="en"] .j-actions {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+html[lang="en"] .j-purpose {
+  line-height: 1.4;
+}
+
+html[lang="en"] [data-slot="card-description"] code {
+  font-size: 0.72rem;
 }

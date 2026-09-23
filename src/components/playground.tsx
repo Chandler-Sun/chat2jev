@@ -21,6 +21,7 @@ import { layoutStorage } from "@/lib/layout-storage";
 import { toast } from "sonner";
 import { FitBadge } from "@/components/answers";
 import { ComparePane, type ChatRun } from "@/components/compare-pane";
+import { getLocale, useI18n } from "@/components/locale-provider";
 import { QuestionEditor } from "@/components/question-editor";
 import { SettingsBar } from "@/components/settings-bar";
 import { StateEditor } from "@/components/state-editor";
@@ -47,7 +48,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ClientOnly } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { blankReplaceableState, pretty } from "@/lib/conversion";
-import { samples } from "@/lib/samples";
+import { findSampleId, sampleById, samplesFor } from "@/lib/samples";
 import {
   defaultSettings,
   loadWorkbench,
@@ -61,8 +62,11 @@ import {
   type Conversion,
   type SystemOneResponse,
 } from "@/lib/types";
+import { translate, type MessageKey } from "@/lib/i18n";
 
 export function Playground() {
+  const { locale, t } = useI18n();
+  const localeSamples = samplesFor(locale);
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [packs, setPacks] = useState<QuestionPack[]>([]);
@@ -109,6 +113,23 @@ export function Playground() {
     });
   }, [ready, settings, packs, source, stateText, questionsText, conversion]);
 
+  useEffect(() => {
+    if (!ready) return;
+    const id = findSampleId(source, stateText, questionsText);
+    if (!id) return;
+    const localized = sampleById(locale, id);
+    if (!localized) return;
+    if (
+      localized.source === source &&
+      pretty(localized.preview.state) === stateText &&
+      pretty(localized.preview.questions) === questionsText &&
+      conversion?.title === localized.preview.title
+    ) {
+      return;
+    }
+    applySample(localized);
+  }, [ready, locale, source, stateText, questionsText, conversion?.title]);
+
   const stateParsed = useMemo(() => stateSchema.safeParse(parseJson(stateText)), [stateText]);
   const questionsParsed = useMemo(() => {
     const json = parseJson(questionsText);
@@ -135,7 +156,7 @@ export function Playground() {
   async function convert() {
     setBusy("convert");
     setError("");
-    setStatus("正在把 chat completion 转成 Jev…");
+    setStatus(t("status.converting"));
     setResponse(null);
     try {
       const result = await postJson<{ conversion: Conversion; model?: string }>("/api/convert", {
@@ -146,11 +167,11 @@ export function Playground() {
       });
       applyConversion(result.conversion);
       const usedModel = result.model?.trim() || settings.llmModel.trim();
-      setStatus(`已用 ${usedModel} 转成 State 和 Questions。改完原请求可再转换，或直接运行对比。`);
-      toast.success(`已用 ${usedModel} 转换成 Jev`);
+      setStatus(t("status.converted", { model: usedModel }));
+      toast.success(t("status.convertToast", { model: usedModel }));
     } catch (caught) {
       setStatus("");
-      setError(caught instanceof Error ? caught.message : "转换失败");
+      setError(caught instanceof Error ? caught.message : t("status.convertFail"));
     } finally {
       setBusy(null);
     }
@@ -167,8 +188,13 @@ export function Playground() {
   }
 
   function loadSample(id: string) {
-    const sample = samples.find((item) => item.id === id);
+    const sample = sampleById(locale, id);
     if (!sample) return;
+    applySample(sample);
+    setStatus(t("status.sample"));
+  }
+
+  function applySample(sample: (typeof localeSamples)[number]) {
     setSource(sample.source);
     applyConversion(sample.preview);
     setResponse(null);
@@ -177,22 +203,21 @@ export function Playground() {
     setJevError("");
     setChatSourceRan(null);
     setError("");
-    setStatus("已载入示例。可以直接运行对比，或先改 State / Questions。");
   }
 
   function blankState() {
     if (!stateParsed.success || !conversion) return;
     setStateText(pretty(blankReplaceableState(stateParsed.data, conversion.fields)));
     setRevision((value) => value + 1);
-    setStatus("可替换字段已清空。问题保持不变。");
+    setStatus(t("status.blanked"));
   }
 
   function savePack() {
     if (!questionsParsed?.success) {
-      setError("先把 Questions 改成合法结构，再保存");
+      setError(t("status.saveInvalid"));
       return;
     }
-    const title = packTitle.trim() || conversion?.title || "未命名问题组";
+    const title = packTitle.trim() || conversion?.title || t("status.untitled");
     const pack: QuestionPack = {
       id: crypto.randomUUID(),
       title,
@@ -202,9 +227,9 @@ export function Playground() {
       questionNotes: conversion?.questionNotes ?? [],
     };
     setPacks((current) => [pack, ...current.filter((item) => item.title !== title)]);
-    setStatus(`已保存问题组「${title}」。之后可以只换 State。`);
+    setStatus(t("status.saved", { title }));
     setError("");
-    toast.success(`已保存模板「${title}」`);
+    toast.success(t("status.savedToast", { title }));
   }
 
   function loadPack(pack: QuestionPack) {
@@ -224,13 +249,13 @@ export function Playground() {
             questionNotes: pack.questionNotes,
           },
     );
-    setStatus(`已载入「${pack.title}」。State 没有改。`);
+    setStatus(t("status.packLoaded", { title: pack.title }));
     setError("");
   }
 
   async function publishRoute() {
     if (!conversion || !questionsParsed?.success) {
-      setError("先转换出可用的 Questions，再发布到代理");
+      setError(t("status.publishNeed"));
       return;
     }
     try {
@@ -248,18 +273,18 @@ export function Playground() {
         }),
       });
       const payload = (await response.json()) as { route?: { slug: string }; error?: string };
-      if (!response.ok) throw new Error(payload.error || "发布失败");
-      setStatus(`已发布代理路由 ${payload.route?.slug}。可到代理页用同一段请求试命中。`);
+      if (!response.ok) throw new Error(payload.error || t("status.publishFail"));
+      setStatus(t("status.published", { slug: payload.route?.slug ?? "" }));
       setError("");
-      toast.success(`已发布代理路由 ${payload.route?.slug}`);
+      toast.success(t("status.publishedToast", { slug: payload.route?.slug ?? "" }));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "发布失败");
+      setError(caught instanceof Error ? caught.message : t("status.publishFail"));
     }
   }
 
   async function fetchJev() {
     if (!stateParsed.success || !questionsParsed?.success) {
-      throw new Error("先转换出可用的 State 和 Questions。");
+      throw new Error(t("status.needBench"));
     }
     const snapshot = `${stateText}\n---\n${questionsText}`;
     const result = await postJson<SystemOneResponse>("/api/evaluate", {
@@ -274,25 +299,25 @@ export function Playground() {
 
   async function runJev() {
     if (!canJev) {
-      setError("先转换出 Questions，再测试 Jev。");
+      setError(t("status.needQuestions"));
       return;
     }
     if (!settings.typesafeApiKey.trim()) {
       setSettingsOpen(true);
-      setJevError("先填写 TypeSafe Key，再跑 Jev。");
+      setJevError(t("status.needJevKey"));
       return;
     }
 
     setBusy("jev");
     setError("");
     setJevError("");
-    setStatus("正在问 Jev…");
+    setStatus(t("status.askingJev"));
     try {
       await fetchJev();
-      setStatus("Jev 已返回。可在右侧看概率，或再跑对比。");
-      toast.success("Jev 测试完成");
+      setStatus(t("status.jevDone"));
+      toast.success(t("status.jevToast"));
     } catch (caught) {
-      setJevError(caught instanceof Error ? caught.message : "Jev 调用失败");
+      setJevError(caught instanceof Error ? caught.message : t("status.jevFail"));
     } finally {
       setBusy(null);
     }
@@ -303,19 +328,19 @@ export function Playground() {
     const runJevSide = canJev && Boolean(settings.typesafeApiKey.trim());
 
     if (!canCompare) {
-      setError("先载入原请求，或转换出 Questions。");
+      setError(t("status.needInput"));
       return;
     }
     if (canChat && !settings.llmModel.trim()) {
       setSettingsOpen(true);
-      setChatError("先填写转换模型名称，再跑传统 Chat。");
+      setChatError(t("status.needChatModel"));
     }
     if (canJev && !settings.typesafeApiKey.trim()) {
       setSettingsOpen(true);
-      setJevError("先填写 TypeSafe Key，再跑 Jev。");
+      setJevError(t("status.needJevKey"));
     }
     if (!runChat && !runJevSide) {
-      setError("先补齐至少一侧的模型设置，再运行对比。");
+      setError(t("status.needSide"));
       return;
     }
 
@@ -323,7 +348,7 @@ export function Playground() {
     setError("");
     setChatError("");
     setJevError("");
-    setStatus(runChat && runJevSide ? "正在同时跑 Chat 和 Jev…" : runChat ? "正在跑传统 Chat…" : "正在问 Jev…");
+    setStatus(runChat && runJevSide ? t("status.runningBoth") : runChat ? t("status.runningChat") : t("status.askingJev"));
 
     const tasks: Promise<void>[] = [];
     if (runChat) {
@@ -341,7 +366,7 @@ export function Playground() {
             setChat({ ...result, latencyMs: result.latencyMs ?? Date.now() - started });
             setChatSourceRan(snapshot);
           } catch (caught) {
-            setChatError(caught instanceof Error ? caught.message : "Chat completion 失败");
+            setChatError(caught instanceof Error ? caught.message : t("status.chatFail"));
           }
         })(),
       );
@@ -352,7 +377,7 @@ export function Playground() {
           try {
             await fetchJev();
           } catch (caught) {
-            setJevError(caught instanceof Error ? caught.message : "Jev 调用失败");
+            setJevError(caught instanceof Error ? caught.message : t("status.jevFail"));
           }
         })(),
       );
@@ -360,7 +385,7 @@ export function Playground() {
 
     await Promise.all(tasks);
     setBusy(null);
-    setStatus("对比完成。左侧是生成文字，右侧是 Jev 概率。");
+    setStatus(t("status.compared"));
   }
 
   runRef.current = () => {
@@ -378,7 +403,7 @@ export function Playground() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const compareLabel = canChat && canJev ? "运行对比" : canChat ? "运行 Chat" : "运行对比";
+  const compareLabel = canChat && canJev ? t("dock.compare") : canChat ? t("dock.chat") : t("dock.compare");
   const panelIds = ["source", "state", "questions", "results"];
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     storage: layoutStorage,
@@ -413,32 +438,32 @@ export function Playground() {
               data-tone="source"
               className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-2 rounded-xl bg-card text-card-foreground ring-1 ring-foreground/10"
               aria-expanded={false}
-              aria-label="展开原始 Chat 请求"
+              aria-label={t("source.expand")}
               onClick={() => setSourceCollapsed(false)}
             >
               <span className="tone-dot" aria-hidden="true" />
               <PanelLeftOpenIcon />
-              <span className="[writing-mode:vertical-rl] text-xs">原请求</span>
+              <span className="[writing-mode:vertical-rl] text-xs">{t("source.rail")}</span>
             </button>
           ) : (
             <WorkspacePanel
               tone="source"
-              title="原始 Chat 请求"
-              description="发给传统模型的原文。转换成 Jev 后，换测试数据只改 State。"
+              title={t("source.title")}
+              description={t("source.desc")}
               hideContent={sourceCollapsed}
               action={
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button type="button" variant="outline" size="icon-sm" />}>
                       <MoreHorizontalIcon />
-                      <span className="sr-only">加载示例</span>
+                      <span className="sr-only">{t("sample.load")}</span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-auto min-w-44">
                       <DropdownMenuGroup>
-                        <DropdownMenuLabel>加载示例</DropdownMenuLabel>
-                        {samples.map((sample) => (
+                        <DropdownMenuLabel>{t("sample.load")}</DropdownMenuLabel>
+                        {localeSamples.map((sample) => (
                           <DropdownMenuItem key={sample.id} onClick={() => loadSample(sample.id)}>
-                            {sample.label}
+                            {t(`sample.${sample.id}` as MessageKey)}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuGroup>
@@ -452,18 +477,18 @@ export function Playground() {
                           variant="outline"
                           size="icon-sm"
                           aria-expanded={!sourceCollapsed}
-                          aria-label={sourceCollapsed ? "展开原请求" : "收起原请求"}
+                          aria-label={sourceCollapsed ? t("source.expand") : t("source.collapse")}
                           onClick={() => setSourceCollapsed((open) => !open)}
                         />
                       }
                     >
                       {sourceCollapsed ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
                     </TooltipTrigger>
-                    <TooltipContent>{sourceCollapsed ? "展开原请求" : "收起原请求"}</TooltipContent>
+                    <TooltipContent>{sourceCollapsed ? t("source.expand") : t("source.collapse")}</TooltipContent>
                   </Tooltip>
                   <Button type="button" size="sm" disabled={busy !== null || !source.trim()} onClick={convert}>
                     {busy === "convert" ? <Spinner data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
-                    {busy === "convert" ? "转换中…" : "转换成 Jev"}
+                    {busy === "convert" ? t("source.converting") : t("source.convert")}
                   </Button>
                 </div>
               }
@@ -473,8 +498,8 @@ export function Playground() {
                 className="editor fill"
                 value={source}
                 spellCheck={false}
-                placeholder='粘贴 {"model": "...", "messages": [...]} 或 curl 请求命令…'
-                aria-label="原始请求"
+                placeholder={t("source.placeholder")}
+                aria-label={t("source.aria")}
                 onChange={(event) => setSource(event.target.value)}
               />
             </WorkspacePanel>
@@ -486,7 +511,7 @@ export function Playground() {
           <WorkspacePanel
             tone="state"
             title="State"
-            description="Jev 读到的事实。换数据只改这里。"
+            description={t("state.desc")}
             action={
               <Tooltip>
                 <TooltipTrigger
@@ -501,9 +526,9 @@ export function Playground() {
                   }
                 >
                   <EraserIcon data-icon="inline-start" />
-                  清空
+                  {t("state.clear")}
                 </TooltipTrigger>
-                <TooltipContent>清空可替换字段的值，保留字段结构</TooltipContent>
+                <TooltipContent>{t("state.clearHint")}</TooltipContent>
               </Tooltip>
             }
             contentClassName="gap-2"
@@ -524,8 +549,8 @@ export function Playground() {
                   <EmptyMedia variant="icon">
                     <SparklesIcon />
                   </EmptyMedia>
-                  <EmptyTitle>还没有 State</EmptyTitle>
-                  <EmptyDescription>粘贴 Chat 请求后点「转换成 Jev」，或先载入示例。</EmptyDescription>
+                  <EmptyTitle>{t("state.emptyTitle")}</EmptyTitle>
+                  <EmptyDescription>{t("state.emptyDesc")}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}
@@ -533,7 +558,7 @@ export function Playground() {
         </ResizablePanel>
         <ResizableHandle withHandle className="bg-transparent" />
         <ResizablePanel id="questions" defaultSize="24" minSize={wide ? "16" : 160} className="min-h-0 min-w-0">
-          <WorkspacePanel tone="questions" title="Questions" description="可复用的判断维度。" contentClassName="gap-2">
+          <WorkspacePanel tone="questions" title="Questions" description={t("questions.desc")} contentClassName="gap-2">
             {hasBench ? (
               <>
                 <QuestionEditor
@@ -546,18 +571,18 @@ export function Playground() {
                     <Input
                       value={packTitle}
                       onChange={(event) => setPackTitle(event.target.value)}
-                      aria-label="问题模板名称"
-                      placeholder="模板名称，如：售后分诊标准版"
+                      aria-label={t("questions.packName")}
+                      placeholder={t("questions.packPlaceholder")}
                     />
                     <Button type="button" variant="outline" onClick={savePack}>
                       <BookmarkIcon data-icon="inline-start" />
-                      保存
+                      {t("questions.save")}
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" size="sm" disabled={busy !== null || !canJev} onClick={runJev}>
                       {busy === "jev" ? <Spinner data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
-                      {busy === "jev" ? "测试中…" : "测试 Jev"}
+                      {busy === "jev" ? t("questions.testing") : t("questions.testJev")}
                     </Button>
                     <Tooltip>
                       <TooltipTrigger
@@ -569,26 +594,26 @@ export function Playground() {
                             disabled={!requestPreview}
                             onClick={async () => {
                               await copyText(requestPreview);
-                              setStatus("已复制 TypeSafe System One 请求 JSON。");
+                              setStatus(t("status.copied"));
                               setError("");
-                              toast.success("已复制 TypeSafe 请求 JSON");
+                              toast.success(t("status.copiedToast"));
                             }}
                           />
                         }
                       >
                         <CopyIcon data-icon="inline-start" />
-                        复制 Jev 请求
+                        {t("questions.copy")}
                       </TooltipTrigger>
-                      <TooltipContent>复制发往 TypeSafe /v1/systemone 的完整请求</TooltipContent>
+                      <TooltipContent>{t("questions.copyHint")}</TooltipContent>
                     </Tooltip>
                     <Button type="button" variant="outline" size="sm" disabled={!conversion} onClick={publishRoute}>
                       <RouteIcon data-icon="inline-start" />
-                      发布代理
+                      {t("questions.publish")}
                     </Button>
                   </div>
                   {packs.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-muted-foreground">模板：</span>
+                      <span className="text-xs text-muted-foreground">{t("questions.packs")}</span>
                       {packs.map((pack) => (
                         <span key={pack.id} className="inline-flex items-center overflow-hidden rounded-full border">
                           <Button type="button" variant="ghost" size="sm" onClick={() => loadPack(pack)}>
@@ -598,7 +623,7 @@ export function Playground() {
                             type="button"
                             variant="ghost"
                             size="icon-xs"
-                            title="删除此模板"
+                            title={t("questions.deletePack")}
                             onClick={() => setPacks((current) => current.filter((item) => item.id !== pack.id))}
                           >
                             <XIcon />
@@ -615,8 +640,8 @@ export function Playground() {
                   <EmptyMedia variant="icon">
                     <ScaleIcon />
                   </EmptyMedia>
-                  <EmptyTitle>还没有 Questions</EmptyTitle>
-                  <EmptyDescription>转换后会在这里列出可复用的判断维度，并可保存成模板。</EmptyDescription>
+                  <EmptyTitle>{t("questions.emptyTitle")}</EmptyTitle>
+                  <EmptyDescription>{t("questions.emptyDesc")}</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )}
@@ -627,8 +652,8 @@ export function Playground() {
         <ResizablePanel id="results" defaultSize="34" minSize={wide ? "22" : 180} className="min-h-0 min-w-0">
           <WorkspacePanel
             tone="results"
-            title="结果对比"
-            description={hasBench ? "同一输入：Chat 生成文字，Jev 给出带概率的判断。" : "先转换或载入示例，再同时跑 Chat 和 Jev。"}
+            title={t("results.title")}
+            description={hasBench ? t("results.descReady") : t("results.descEmpty")}
             contentClassName="min-h-0 px-0 py-0"
           >
             <ComparePane
@@ -646,20 +671,20 @@ export function Playground() {
       </ResizablePanelGroup>
       </ClientOnly>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl bg-primary px-3 py-2 text-primary-foreground">
+      <div className="workbench-dock rounded-xl bg-primary px-3 py-2 text-primary-foreground">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <p className="m-0 truncate text-sm text-primary-foreground/80">
             {error ? (
               <span className="text-warning-foreground">⚠️ {error}</span>
             ) : stale || chatStale ? (
-              <span>输入已改动，当前显示的是上次对比结果</span>
+              <span>{t("dock.stale")}</span>
             ) : (
-              status || "原请求可收起 · 改完可再转换 · ⌘ Enter 跑对比"
+              status || t("dock.hint")
             )}
           </p>
           <Kbd className="bg-primary-foreground/10 text-primary-foreground/80">⌘ Enter</Kbd>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -667,7 +692,7 @@ export function Playground() {
             onClick={() => setSourceCollapsed((open) => !open)}
           >
             {sourceCollapsed ? <PanelLeftOpenIcon data-icon="inline-start" /> : <PanelLeftCloseIcon data-icon="inline-start" />}
-            {sourceCollapsed ? "展开原请求" : "收起原请求"}
+            {sourceCollapsed ? t("source.expand") : t("source.collapse")}
           </Button>
           <Button
             type="button"
@@ -677,7 +702,7 @@ export function Playground() {
             onClick={convert}
           >
             {busy === "convert" ? <Spinner data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
-            {busy === "convert" ? "转换中…" : "转换成 Jev"}
+            {busy === "convert" ? t("source.converting") : t("source.convert")}
           </Button>
           <Button
             type="button"
@@ -687,11 +712,11 @@ export function Playground() {
             onClick={runJev}
           >
             {busy === "jev" ? <Spinner data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
-            {busy === "jev" ? "测试中…" : "测试 Jev"}
+            {busy === "jev" ? t("questions.testing") : t("questions.testJev")}
           </Button>
           <Button type="button" variant="copper" disabled={busy !== null || !canCompare} onClick={runCompare}>
             {busy === "compare" ? <Spinner data-icon="inline-start" /> : stale || chatStale ? <RefreshCwIcon data-icon="inline-start" /> : <ScaleIcon data-icon="inline-start" />}
-            {busy === "compare" ? "正在对比…" : stale || chatStale ? "重新对比" : compareLabel}
+            {busy === "compare" ? t("dock.comparing") : stale || chatStale ? t("dock.recompare") : compareLabel}
           </Button>
         </div>
       </div>
@@ -700,6 +725,7 @@ export function Playground() {
 }
 
 function ConversionNotes({ conversion }: { conversion: Conversion }) {
+  const { t } = useI18n();
   const warnings = conversion.warnings;
 
   return (
@@ -727,17 +753,17 @@ function ConversionNotes({ conversion }: { conversion: Conversion }) {
                 size="xs"
                 data-tone="copper"
                 className="shrink-0"
-                aria-label={`转换注意点 ${warnings.length} 条`}
+                aria-label={t("notes.aria", { count: warnings.length })}
               />
             }
           >
             <AlertTriangleIcon data-icon="inline-start" />
-            注意点 {warnings.length}
+            {t("notes.chip", { count: warnings.length })}
           </PopoverTrigger>
           <PopoverContent align="end" side="bottom" sideOffset={8} className="w-80 max-w-[min(22rem,calc(100vw-1.5rem))]">
             <Alert data-tone="copper" className="border-0 bg-transparent p-0 shadow-none">
               <AlertTriangleIcon />
-              <AlertTitle>转换注意点</AlertTitle>
+              <AlertTitle>{t("notes.title")}</AlertTitle>
               <AlertDescription>
                 {warnings.map((warning) => (
                   <p key={warning}>{warning}</p>
@@ -762,7 +788,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     const message =
       payload && typeof payload === "object" && "error" in payload && payload.error
         ? payload.error
-        : `请求失败（${response.status}）`;
+        : translate(getLocale(), "status.requestFail", { status: response.status });
     throw new Error(message);
   }
   return payload as T;
